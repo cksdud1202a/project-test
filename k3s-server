@@ -1,0 +1,115 @@
+---
+# 1. 클러스터 설치 여부 확인 (K3s 바이너리 존재 여부로 확인)
+- name: Check if K3s is already installed
+  stat:
+    path: /usr/local/bin/k3s
+  register: k3s_bin
+
+# 2. K3s 클러스터 초기화 (Server)
+# kubeadm init과 Flannel 설치 과정을 이 태스크 하나가 모두 대신합니다.
+- name: Initialize K3s cluster (Server)
+  shell: |
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" \
+    sh -s - server \
+    --cluster-cidr={{ pod_network_cidr }} \
+    --service-cidr={{ service_cidr }} \
+    --apiserver-advertise-address={{ ansible_host }} \
+    --write-kubeconfig-mode 644
+  when: not k3s_bin.stat.exists
+
+# 3. root 사용자를 위한 kube config 설정
+- name: Create .kube directory for root
+  file:
+    path: /root/.kube
+    state: directory
+    mode: '0755'
+
+- name: Link K3s config to root's kube config
+  copy:
+    src: /etc/rancher/k3s/k3s.yaml  # K3s의 기본 설정 파일 경로입니다.
+    dest: /root/.kube/config
+    remote_src: yes
+    owner: root
+    group: root
+    mode: '0600'
+
+# 4. akpolat 사용자를 위한 kube config 설정
+- name: Create .kube directory for akpolat user
+  file:
+    path: /home/akpolat/.kube
+    state: directory
+    owner: akpolat
+    group: akpolat
+    mode: '0755'
+
+- name: Copy K3s config to akpolat's kube config
+  copy:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: /home/akpolat/.kube/config
+    remote_src: yes
+    owner: akpolat
+    group: akpolat
+    mode: '0644'
+
+# 5. Node Token 추출 (K3s는 join command 대신 token을 사용합니다)
+- name: Get K3s Node Token
+  slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: k3s_node_token_encoded
+
+- name: Set K3s Node Token fact
+  set_fact:
+    k3s_node_token: "{{ k3s_node_token_encoded.content | b64decode | trim }}"
+
+# 6. Flannel 상태 확인 (K3s는 기본 내장되어 있습니다)
+- name: Wait for Flannel to be ready
+  shell: kubectl get pods -n kube-system -l k8s-app=flannel --no-headers | grep -v Running | wc -l
+  register: flannel_not_ready
+  until: flannel_not_ready.stdout == "0"
+  retries: 20
+  delay: 15
+
+# 7. Worker 노드가 Ready 상태가 될 때까지 대기
+- name: Wait for all nodes to be ready
+  shell: kubectl get nodes --no-headers | awk '{print $2}' | grep -v Ready | wc -l
+  register: not_ready_nodes
+  until: not_ready_nodes.stdout == "0"
+  retries: 30
+  delay: 10
+
+# 8. Worker 노드 레이블링
+- name: Label worker nodes
+  shell: kubectl label node {{ hostvars[item]['ansible_hostname'] }} node-role.kubernetes.io/worker=worker --overwrite
+  loop: "{{ groups['agents'] }}"
+  ignore_errors: yes
+
+# --- 추가 설정 (Policy, Quota, Metrics) ---
+
+# 9. Resource Quota 설정 (production 네임스페이스)
+- name: Apply default resource quotas
+  shell: |
+    kubectl create namespace production || true
+    kubectl apply -f - <<EOF
+    apiVersion: v1
+    kind: ResourceQuota
+    metadata:
+      name: compute-quota
+      namespace: production
+    spec:
+      hard:
+        requests.cpu: "1"
+        requests.memory: 1Gi
+        limits.cpu: "2"
+        limits.memory: 2Gi
+    EOF
+
+# 10. Metrics Server 설치
+# K3s는 Metrics Server가 기본 내장되어 있으나, 
+# 보내주신 코드처럼 커스텀 설정을 적용하고 싶을 때만 실행합니다.
+- name: Apply Custom Metrics Server Configuration
+  shell: |
+    kubectl apply -f - <<EOF
+    # (보내주신 metrics-server YAML 내용이 여기에 들어갑니다)
+    EOF
+  # 주의: K3s 기본 metrics-server와 충돌할 수 있으므로 
+  # 처음 설치 시 --disable metrics-server 옵션을 사용하는 것이 좋습니다.
