@@ -11,7 +11,7 @@ jobs:
   # -------------------------------------------------------------------
   terraform:
     name: Provision Infrastructure
-    runs-on: [ self-hosted, linux, bastion ]
+    runs-on: [ self-hosted, Linux, X64 ]
     outputs:
       # Ansible Job으로 넘겨줄 IP들
       server_ip: ${{ steps.set_outputs.outputs.server_ip }}
@@ -46,7 +46,7 @@ jobs:
   # -------------------------------------------------------------------
   ansible:
     name: Configure K3s cluster & Deploy App
-    runs-on: [ self-hosted, linux, bastion ]
+    runs-on: [ self-hosted, Linux, X64 ]
     needs: terraform  # Terraform이 성공해야만 실행됨
     env:
       ANSIBLE_HOST_KEY_CHECKING: "False"
