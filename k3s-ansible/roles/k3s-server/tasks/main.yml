@@ -81,7 +81,7 @@
 - name: Label worker nodes
   shell: kubectl label node {{ hostvars[item]['ansible_hostname'] }} node-role.kubernetes.io/worker=worker --overwrite
   loop: "{{ groups['agents'] }}"
-  ignore_errors: yes
+  ignore_errors: true
 
 # --- 추가 설정 (Policy, Quota, Metrics) ---
 
