@@ -1,0 +1,78 @@
+name: Provision & Configure K3s
+
+on:
+  push:
+    branches: [ "master" ]  # 본인의 메인 브랜치명 확인 (main 또는 master)
+  workflow_dispatch:      # 필요 시 수동 실행 가능
+
+jobs:
+  # -------------------------------------------------------------------
+  # 1) Terraform Job: 인프라 생성 및 IP 추출
+  # -------------------------------------------------------------------
+  terraform:
+    name: Provision Infrastructure
+    runs-on: [ self-hosted, linux, bastion ]
+    outputs:
+      # Ansible Job으로 넘겨줄 IP들
+      server_ip: ${{ steps.set_outputs.outputs.server_ip }}
+      agent_ip: ${{ steps.set_outputs.outputs.agent_ip }}
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: terraform
+        run: terraform apply -auto-approve
+
+      # outputs.tf에 정의된 이름을 기반으로 값을 추출하여 다음 Job으로 전달
+      - name: Set Outputs for Ansible
+        id: set_outputs
+        working-directory: terraform
+        run: |
+          echo "server_ip=$(terraform output -raw k3s_server_private_ip)" >> $GITHUB_OUTPUT
+          echo "agent_ip=$(terraform output -raw k3s_agent_private_ip)" >> $GITHUB_OUTPUT
+
+  # -------------------------------------------------------------------
+  # 2) Ansible Job: 클러스터 구성 및 Nginx 배포
+  # -------------------------------------------------------------------
+  ansible:
+    name: Configure K3s cluster & Deploy App
+    runs-on: [ self-hosted, linux, bastion ]
+    needs: terraform  # Terraform이 성공해야만 실행됨
+    env:
+      ANSIBLE_HOST_KEY_CHECKING: "False"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # SSH 키 설정 (Bastion 내부에서 Private 노드로 접속하기 위함)
+      - name: Setup SSH private key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ANSIBLE_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          printf "Host *\n  StrictHostKeyChecking no\n" > ~/.ssh/config
+
+      # 템플릿(hosts.yml.tmpl)을 실제 인벤토리(hosts.yml)로 변환
+      - name: Generate Inventory from Template
+        working-directory: k3s-ansible
+        env:
+          SERVER_IP: ${{ needs.terraform.outputs.server_ip }}
+          AGENT_IP: ${{ needs.terraform.outputs.agent_ip }}
+        run: |
+          envsubst < inventory/hosts.yml.tmpl > inventory/hosts.yml
+          echo "--- Generated Inventory ---"
+          cat inventory/hosts.yml
+
+      # 통합 플레이북(site.yml) 실행
+      # 이 파일 안에는 01-prepare, 02-server, 03-agent, 04-nginx가 모두 들어있어야 함
