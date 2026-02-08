@@ -1,0 +1,26 @@
+all:
+  children:
+    # 1. 전체 클러스터 그룹 (모든 노드 공통 설정용)
+    k3s_cluster:
+      children:
+        # 2. Server 그룹 (기존 masters)
+        # 플레이북의 'hosts: servers'와 매칭됩니다.
+        servers:
+          hosts:
+            kube-controller:
+              ansible_host: ${SERVER_IP}
+              ansible_user: akpolat
+              ansible_ssh_private_key_file: ~/.ssh/id_rsa
+        
+        # 3. Agent 그룹 (기존 workers)
+        # 플레이북의 'hosts: agents'와 매칭됩니다.
+        agents:
+          hosts:
+            kube-node-1:
+              ansible_host: ${AGENT1_IP}
+              ansible_user: akpolat
+              ansible_ssh_private_key_file: ~/.ssh/id_rsa
+            kube-node-2:
+              ansible_host: ${AGENT2_IP}
+              ansible_user: akpolat
+              ansible_ssh_private_key_file: ~/.ssh/id_rsa

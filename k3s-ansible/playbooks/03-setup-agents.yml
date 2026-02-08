@@ -1,0 +1,7 @@
+---
+- name: Setup K3s Agents (Workers)
+  hosts: agents
+  become: true
+  gather_facts: true
+  roles:
+    - k3s-agent
