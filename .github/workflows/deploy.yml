@@ -74,5 +74,10 @@ jobs:
           echo "--- Generated Inventory ---"
           cat inventory/hosts.yml
 
-      # 통합 플레이북(site.yml) 실행
-      # 이 파일 안에는 01-prepare, 02-server, 03-agent, 04-nginx가 모두 들어있어야 함
+      # 전체 자동 배포 스크립트 실행 (deploy.sh)
+      - name: Run Deployment Script
+        working-directory: k3s-ansible
+        run: |
+          # 스크립트에 실행 권한을 부여하고 실행합니다.
+          chmod +x deploy.sh
+          ./deploy.sh
