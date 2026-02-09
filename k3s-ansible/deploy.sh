@@ -15,12 +15,12 @@ fi
 # 2. 모든 노드(Server & Agents) 연결 테스트
 # inventory/hosts.yml에 정의된 노드들에 SSH 접속이 가능한지 확인합니다.
 echo "🔍 모든 노드에 대한 연결 상태를 점검 중..."
-ansible all -i hosts.ini -m ping
+ansible all -i inventory/hosts.yml -m ping -u ubuntu
 
 # 3. 전체 플레이북 실행
 # site.yml은 common, server, agent 역할을 순서대로 호출합니다.
 echo "📦 K3s 전체 설치 프로세스 가동 (site.yml)..."
-ansible-playbook -i hosts.ini site.yml
+ansible-playbook -i inventory/hosts.yml site.yml -u ubuntu
 
 echo ""
 echo "✅ K3s 클러스터 배포가 성공적으로 완료되었습니다!"
