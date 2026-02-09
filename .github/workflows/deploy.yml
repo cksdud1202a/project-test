@@ -61,7 +61,15 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.ANSIBLE_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          printf "Host *\n  StrictHostKeyChecking no\n" > ~/.ssh/config
+          
+          #Bastion 역할을 위한 추가 코드
+          cat <<EOF > ~/.ssh/config
+          Host *
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            IdentityFile ~/.ssh/id_rsa
+            ForwardAgent yes
+          EOF
 
       # 템플릿(hosts.yml.tmpl)을 실제 인벤토리(hosts.yml)로 변환
       - name: Generate Inventory from Template
