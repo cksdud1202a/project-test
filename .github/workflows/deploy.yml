@@ -11,7 +11,7 @@ jobs:
   # -------------------------------------------------------------------
   terraform:
     name: Provision Infrastructure
-    runs-on: [ self-hosted, Linux, X64 ]
+    runs-on: [ self-hosted, Linux, X64 ] #본인의 Runners label 확인
     outputs:
       # Ansible Job으로 넘겨줄 IP들
       server_ip: ${{ steps.set_outputs.outputs.server_ip }}
@@ -46,7 +46,7 @@ jobs:
   # -------------------------------------------------------------------
   ansible:
     name: Configure K3s cluster & Deploy App
-    runs-on: [ self-hosted, Linux, X64 ]
+    runs-on: [ self-hosted, Linux, X64 ] #본인의 Runners label 확인
     needs: terraform  # Terraform이 성공해야만 실행됨
     env:
       ANSIBLE_HOST_KEY_CHECKING: "False"
@@ -79,5 +79,5 @@ jobs:
         working-directory: k3s-ansible
         run: |
           # 스크립트에 실행 권한을 부여하고 실행합니다.
-          chmod +x deploy.sh
+          chmod +x deploy.sh #ansible 명령어를 이용해서 site.yml 를 실행하는 방법도 있음.
           ./deploy.sh
