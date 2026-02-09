@@ -59,10 +59,14 @@ jobs:
       - name: Setup SSH private key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.ANSIBLE_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          cat <<EOF > ~/.ssh/id_rsa
+          ${{ secrets.ANSIBLE_PRIVATE_KEY }}
+          EOF
           chmod 600 ~/.ssh/id_rsa
-          
-          #Bastion 역할을 위한 추가 코드
+
+      # 2. SSH config 설정 
+      - name: Setup SSH config
+        run: |
           cat <<EOF > ~/.ssh/config
           Host *
             StrictHostKeyChecking no
