@@ -70,6 +70,10 @@ jobs:
           SERVER_IP: ${{ needs.terraform.outputs.server_ip }}
           AGENT_IP: ${{ needs.terraform.outputs.agent_ip }}
         run: |
+          export AGENT1_IP=$(echo "$AGENT_IP" | cut -d',' -f1)
+          export AGENT2_IP=$(echo "$AGENT_IP" | cut -d',' -f2)
+          export SERVER_IP="$SERVER_IP"
+          
           envsubst < inventory/hosts.yml.tmpl > inventory/hosts.yml
           echo "--- Generated Inventory ---"
           cat inventory/hosts.yml
