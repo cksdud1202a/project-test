@@ -38,8 +38,8 @@ jobs:
         id: set_outputs
         working-directory: terraform
         run: |
-          echo "server_ip=$(terraform output -raw k3s_server_private_ip)" >> $GITHUB_OUTPUT
-          echo "agent_ip=$(terraform output -raw k3s_agent_private_ip)" >> $GITHUB_OUTPUT
+          echo "server_ip=$(terraform output -raw server_private_ip)" >> $GITHUB_OUTPUT
+          echo "agent_ip=$(terraform output -raw agent_private_ip)" >> $GITHUB_OUTPUT
 
   # -------------------------------------------------------------------
   # 2) Ansible Job: 클러스터 구성 및 Nginx 배포
