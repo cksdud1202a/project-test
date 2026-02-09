@@ -29,4 +29,4 @@ all:
             # 핵심 설정: 서버(Bastion)를 통해 에이전트에 접속함
             # 외부에서 직접 접속이 불가능한 사설 IP 노드들을 위한 통로입니다.
             ansible_ssh_common_args: >-
-              -o ProxyCommand="ssh -W %h:%p -q akpolat@${SERVER_IP} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+              -o ProxyCommand="ssh -W %h:%p -q ubuntu@${SERVER_IP} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
