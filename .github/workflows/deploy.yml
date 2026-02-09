@@ -38,7 +38,7 @@ jobs:
         id: set_outputs
         working-directory: terraform
         run: |
-          echo "server_ip=$(terraform output -raw server_private_ip)" >> $GITHUB_OUTPUT
+          echo "server_ip=$(terraform output -raw server_public_ip)" >> $GITHUB_OUTPUT
           echo "agent_ip=$(terraform output -raw agent_private_ip)" >> $GITHUB_OUTPUT
 
   # -------------------------------------------------------------------
