@@ -16,6 +16,14 @@ resource "aws_security_group" "server_sg" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  
+  ingress { 
+	  from_port   = 30080
+	  to_port     = 30080
+	  protocol    = "tcp"
+	  cidr_blocks = ["0.0.0.0/0"] 
+	  description = "Allow Nginx NodePort on Server Node"
+	}
 
   ingress { # 프라이빗 서브넷(Agent)에서 오는 모든 트래픽 허용 (NAT 역할)
     from_port   = 0
@@ -60,4 +68,3 @@ resource "aws_security_group" "agent_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
-
