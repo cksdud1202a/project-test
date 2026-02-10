@@ -17,10 +17,13 @@ fi
 echo "🔍 모든 노드에 대한 연결 상태를 점검 중..."
 ansible all -i inventory/hosts.yml -m ping -u ubuntu
 
+# AWS에서 'kube-controller' 태그를 가진 서버의 현재 IP를 가져옴
+CURRENT_IP=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=kube-controller" --query "Reservations[*].Instances[*].PrivateIpAddress" --output text)
+
 # 3. 전체 플레이북 실행
 # site.yml은 common, server, agent 역할을 순서대로 호출합니다.
 echo "📦 K3s 전체 설치 프로세스 가동 (site.yml)..."
-ansible-playbook -i inventory/hosts.yml site.yml -u ubuntu
+ansible-playbook -i inventory/hosts.yml site.yml -u ubuntu -e "server_ip=$CURRENT_IP"
 
 echo ""
 echo "✅ K3s 클러스터 배포가 성공적으로 완료되었습니다!"
