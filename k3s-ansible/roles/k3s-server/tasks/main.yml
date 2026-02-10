@@ -33,22 +33,22 @@
     group: root
     mode: '0600'
 
-# 4. akpolat 사용자를 위한 kube config 설정
-- name: Create .kube directory for akpolat user
+# 4. ubuntu 사용자를 위한 kube config 설정
+- name: Create .kube directory for ubuntu user
   file:
-    path: /home/akpolat/.kube
+    path: /home/ubuntu/.kube
     state: directory
-    owner: akpolat
-    group: akpolat
+    owner: ubuntu
+    group: ubuntu
     mode: '0755'
 
-- name: Copy K3s config to akpolat's kube config
+- name: Copy K3s config to ubuntu's kube config
   copy:
     src: /etc/rancher/k3s/k3s.yaml
-    dest: /home/akpolat/.kube/config
+    dest: /home/ubuntu/.kube/config
     remote_src: yes
-    owner: akpolat
-    group: akpolat
+    owner: ubuntu
+    group: ubuntu
     mode: '0644'
 
 # 5. Node Token 추출 (K3s는 join command 대신 token을 사용합니다)
@@ -106,10 +106,10 @@
 # 10. Metrics Server 설치
 # K3s는 Metrics Server가 기본 내장되어 있으나, 
 # 보내주신 코드처럼 커스텀 설정을 적용하고 싶을 때만 실행합니다.
-- name: Apply Custom Metrics Server Configuration
-  shell: |
-    kubectl apply -f - <<EOF
-    # (보내주신 metrics-server YAML 내용이 여기에 들어갑니다)
-    EOF
-  # 주의: K3s 기본 metrics-server와 충돌할 수 있으므로 
-  # 처음 설치 시 --disable metrics-server 옵션을 사용하는 것이 좋습니다.
+#- name: Apply Custom Metrics Server Configuration
+#  shell: |
+#   kubectl apply -f - <<EOF
+#    # (보내주신 metrics-server YAML 내용이 여기에 들어갑니다)
+#      EOF
+#  # 주의: K3s 기본 metrics-server와 충돌할 수 있으므로 
+#  # 처음 설치 시 --disable metrics-server 옵션을 사용하는 것이 좋습니다.
