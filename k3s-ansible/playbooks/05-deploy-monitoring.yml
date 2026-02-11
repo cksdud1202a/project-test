@@ -1,0 +1,76 @@
+---
+- name: Deploy Prometheus & Grafana
+  hosts: servers
+  become: true
+  tasks:
+
+    # 1. 네임스페이스 생성
+    - name: Create namespaces
+      shell: |
+        kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+        kubectl create namespace grafana --dry-run=client -o yaml | kubectl apply -f -
+
+    # 2. Helm 설치 (없으면 설치)
+    - name: Install Helm
+      shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        creates: /usr/local/bin/helm   # helm이 이미 있으면 스킵
+
+    # 3. Grafana Helm repo 추가
+    - name: Add Grafana Helm repo
+      shell: |
+        helm repo add grafana https://grafana.github.io/helm-charts
+        helm repo update
+
+    # ─────────────────────────────────────
+    # Prometheus는 기존대로 yaml로 설치
+    # ─────────────────────────────────────
+
+    # 4. yaml 파일들 마스터 노드로 복사
+    - name: Copy Prometheus manifests
+      copy:
+        src: files/monitoring/
+        dest: /tmp/monitoring/
+
+    # 5. Prometheus kubectl apply
+    - name: Apply Prometheus stack
+      shell: |
+        kubectl apply -f /tmp/monitoring/prometheus-rbac.yaml
+        kubectl apply -f /tmp/monitoring/prometheus-config.yaml
+        kubectl apply -f /tmp/monitoring/prometheus-deployment.yaml
+        kubectl apply -f /tmp/monitoring/node-exporter.yaml
+
+    # ─────────────────────────────────────
+    # Grafana는 Helm으로 설치
+    # ─────────────────────────────────────
+
+    # 6. Grafana Helm으로 설치
+    - name: Install Grafana via Helm
+      shell: |
+        helm upgrade --install grafana grafana/grafana \
+          --namespace grafana \
+          --set adminUser=admin \
+          --set adminPassword=admin \
+          --set service.type=NodePort \
+          --set service.nodePort=30665
+      # upgrade --install : 없으면 install, 있으면 upgrade (멱등성 보장)
+
+    # 7. 완료 확인
+    - name: Check all pods
+      shell: |
+        kubectl get all -n monitoring
+        kubectl get all -n grafana
+      register: result
+
+    - name: Print result
+      debug:
+        msg: "{{ result.stdout }}"
+    
+    - name: Print Access URLs
+      debug:
+        msg:
+          - "=========================================="
+          - "Prometheus : http://{{ server_ip }}:30603"
+          - "Grafana    : http://{{ server_ip }}:30665"
+          - "=========================================="

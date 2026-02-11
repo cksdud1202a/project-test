@@ -50,6 +50,7 @@ jobs:
     needs: terraform  # Terraform이 성공해야만 실행됨
     env:
       ANSIBLE_HOST_KEY_CHECKING: "False"
+      SERVER_IP: ${{ needs.terraform.outputs.server_ip }} # Write Job Summary에서 $SERVER_IP을 사용하기 위해 추가
 
     steps:
       - name: Checkout repository
@@ -97,3 +98,12 @@ jobs:
           # 스크립트에 실행 권한을 부여하고 실행합니다.
           chmod +x deploy.sh #ansible 명령어를 이용해서 site.yml 를 실행하는 방법도 있음.
           ./deploy.sh
+
+      # GitAction에서 Prometheus, Grafana 링크 띄우기
+      - name: Write Job Summary
+        run: |
+          echo "## 🚀 배포 완료" >> $GITHUB_STEP_SUMMARY
+          echo "| 서비스 | URL |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Prometheus | http://$SERVER_IP:30603 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Grafana    | http://$SERVER_IP:30665 |" >> $GITHUB_STEP_SUMMARY

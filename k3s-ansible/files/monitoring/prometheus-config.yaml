@@ -1,0 +1,80 @@
+# Kubernetes API 버전 (v1은 ConfigMap, Pod 등 기본 리소스에 사용)
+apiVersion: v1
+
+# 리소스 종류: 설정값을 저장하는 ConfigMap
+kind: ConfigMap
+
+metadata:
+  name: prometheus-config       # 이 ConfigMap의 이름 (Prometheus Pod에서 참조할 때 사용)
+  namespace: monitoring         # monitoring 네임스페이스에 배포 (Prometheus가 있는 공간)
+
+data:
+  prometheus.yml: |             # Prometheus가 읽을 설정 파일 내용 (| 는 YAML 멀티라인 문자열)
+
+    global:
+      scrape_interval: 15s      # 모든 job의 기본 메트릭 수집 주기 (15초마다 수집)
+      evaluation_interval: 15s  # alerting rule 평가 주기 (15초마다 경보 조건 체크)
+
+    scrape_configs:             # 메트릭을 수집할 대상들의 목록
+
+      # ─────────────────────────────────────────
+      # [Job 1] 쿠버네티스 노드(Node) 메트릭 수집
+      # ─────────────────────────────────────────
+      - job_name: 'kubernetes-nodes'
+
+        kubernetes_sd_configs:  # 쿠버네티스 Service Discovery 사용
+          - role: node          # 클러스터 내 모든 Node를 자동으로 수집 대상으로 등록
+
+        relabel_configs:        # 수집된 라벨을 가공하는 규칙
+          - action: labelmap    # 아래 regex에 매칭되는 라벨을 Prometheus 라벨로 복사
+            regex: __meta_kubernetes_node_label_(.+)
+            # 예: __meta_kubernetes_node_label_zone=us-east-1
+            #  → zone=us-east-1 로 변환되어 메트릭에 붙음
+
+
+      # ─────────────────────────────────────────
+      # [Job 2] 쿠버네티스 파드(Pod) 메트릭 수집
+      # ─────────────────────────────────────────
+      - job_name: 'kubernetes-pods'
+
+        kubernetes_sd_configs:
+          - role: pod           # 클러스터 내 모든 Pod를 수집 후보로 등록
+
+        relabel_configs:
+
+          # 규칙 1: 어노테이션에 prometheus.io/scrape: "true" 가 있는 Pod만 수집
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep        # 조건 불일치 Pod는 수집 대상에서 제외
+            regex: true
+
+          # 규칙 2: 어노테이션에 prometheus.io/path 가 있으면 해당 경로를 메트릭 수집 경로로 설정
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__  # 기본값 /metrics 대신 커스텀 경로 사용
+            regex: (.+)
+            # 예: prometheus.io/path: /custom/metrics → /custom/metrics 로 수집
+
+          # 규칙 3: 어노테이션에 prometheus.io/port 가 있으면 해당 포트로 수집 주소 재설정
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            target_label: __address__
+            regex: ([^:]+)(?::\d+)?;(\d+)  # IP와 포트를 분리해서 재조합
+            replacement: $1:$2             # 결과: <Pod IP>:<지정 포트>
+            # 예: 10.0.0.5:8080 + 어노테이션 port=9090 → 10.0.0.5:9090
+
+
+      # ─────────────────────────────────────────
+      # [Job 3] Node Exporter 메트릭 수집
+      # (노드의 CPU, 메모리, 디스크 등 OS 수준 메트릭)
+      # ─────────────────────────────────────────
+      - job_name: 'node-exporter'
+
+        kubernetes_sd_configs:
+          - role: endpoints     # Service의 Endpoint를 수집 대상으로 등록
+
+        relabel_configs:
+
+          # 'node-exporter' 라는 이름의 Endpoints만 수집 (다른 서비스는 제외)
+          - source_labels: [__meta_kubernetes_endpoints_name]
+            regex: 'node-exporter'
+            action: keep

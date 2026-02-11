@@ -3,4 +3,5 @@
 - import_playbook: playbooks/01-prepare-nodes.yml
 - import_playbook: playbooks/02-setup-server.yml
 - import_playbook: playbooks/03-setup-agents.yml
-- import_playbook: playbooks/04-deploy-nginx.yml 
+- import_playbook: playbooks/04-deploy-nginx.yml
+- import_playbook: playbooks/05-deploy-monitoring.yml 
