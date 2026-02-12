@@ -1,0 +1,25 @@
+---
+# 1. 노드 참여 여부 확인 (K3s는 kubelet.conf 대신 k3s-agent 서비스 존재 여부로 확인)
+- name: Check if k3s-agent is already installed
+  stat:
+    path: /usr/local/bin/k3s-agent-uninstall.sh
+  register: k3s_agent_installed
+
+# 2. Master(Server) 노드로부터 토큰 가져오기 
+# (k3s-server 역할에서 저장했던 메모리상의 변수 k3s_node_token을 활용합니다)
+- name: Join K3s cluster as Agent
+  shell: |
+    curl -sfL https://get.k3s.io | \
+    K3S_URL=https://{{ hostvars[groups['servers'][0]]['ansible_host'] }}:6443 \
+    K3S_TOKEN={{ hostvars[groups['servers'][0]]['k3s_node_token'] }} \
+    INSTALL_K3S_VERSION="{{ k3s_version }}" \
+    sh -s - agent
+  when: not k3s_agent_installed.stat.exists
+
+# 3. K3s Agent 서비스 활성화 및 시작
+# K3s는 kubelet 대신 k3s-agent 서비스가 모든 것을 관리합니다.
+- name: Enable and start k3s-agent
+  systemd:
+    name: k3s-agent
+    enabled: yes
+    state: started

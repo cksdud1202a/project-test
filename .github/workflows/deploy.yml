@@ -1,0 +1,65 @@
+name: Provision & Configure K3s
+
+on:
+  push:
+    branches: [ "main" ]  # 본인의 메인 브랜치명 확인
+  workflow_dispatch:      # 수동 실행 가능
+
+jobs:
+  # -------------------------------------------------------------------
+  # 1) Terraform Job: 인프라 생성 (IP 추출 단계 삭제)
+  # -------------------------------------------------------------------
+  terraform:
+    name: Provision Infrastructure
+    runs-on: [ self-hosted, Linux, X64 ]
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: terraform
+        run: terraform apply -auto-approve
+
+  # -------------------------------------------------------------------
+  # 2) Ansible Job: 동적 인벤토리를 이용한 클러스터 구성
+  # -------------------------------------------------------------------
+  ansible:
+    name: Configure K3s cluster & Deploy App
+    runs-on: [ self-hosted, Linux, X64 ]
+    needs: terraform
+    env:
+      # Ansible이 AWS API를 호출하여 노드를 찾기 위해 필요한 인증 정보
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+      ANSIBLE_HOST_KEY_CHECKING: "False"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 1. SSH 키 설정 (인증용 키 파일만 생성)
+      - name: Setup SSH private key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ANSIBLE_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      # [삭제됨] Setup SSH config (인벤토리 파일의 compose 설정이 대신함)
+      # [삭제됨] Generate Inventory from Template (envsubst 로직 필요 없음)
+
+      # 2. 전체 자동 배포 스크립트 실행
+      - name: Run Deployment Script
+        working-directory: k3s-ansible
+        run: |
+          chmod +x deploy.sh
+          ./deploy.sh

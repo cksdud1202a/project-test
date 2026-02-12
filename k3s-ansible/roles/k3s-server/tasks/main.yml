@@ -1,0 +1,95 @@
+---
+# 1. 중복 설치 방지 (멱등성 확보)
+# K3s 바이너리 존재 여부를 확인하여, 이미 설치된 서버에서 스크립트가 재실행되는 것을 막습니다.
+- name: Check if K3s is already installed
+  stat:
+    path: /usr/local/bin/k3s
+  register: k3s_bin
+
+# 2. K3s 서버 초기화 및 설치
+# curl로 설치 스크립트를 받아 실행하며, 필요한 옵션들을 주입합니다.
+- name: Initialize K3s cluster (Server)
+  shell: |
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" \
+    sh -s - server \
+    --cluster-cidr={{ pod_network_cidr }} \
+    --service-cidr={{ service_cidr }} \
+    --apiserver-advertise-address={{ ansible_host }} \
+    --node-ip={{ ansible_host }} \
+    --write-kubeconfig-mode 644
+  when: not k3s_bin.stat.exists
+  # [기술 포인트]
+  # --apiserver-advertise-address: 다른 노드들이 이 서버의 API로 접속할 때 쓸 IP입니다.
+  # --node-ip: 동적 인벤토리의 IP와 K3s 노드 이름을 일치시키기 위해 명시적으로 지정합니다.
+  # --write-kubeconfig-mode 644: 일반 사용자(ubuntu)도 쿠버네티스 명령을 내릴 수 있게 권한을 부여합니다.
+
+# 3. 사용자 편의를 위한 kubeconfig 폴더 생성
+# kubectl 명령을 내릴 때 설정 파일을 읽어올 위치(.kube)를 만듭니다.
+- name: Create .kube directory for user
+  file:
+    path: "/home/{{ ansible_user }}/.kube"
+    state: directory
+    owner: "{{ ansible_user }}"
+    mode: '0755'
+
+# 4. K3s 설정 파일을 사용자 홈 디렉토리로 복사
+# /etc/rancher/k3s/k3s.yaml은 루트 권한만 있으므로, 일반 사용자가 쓸 수 있게 복사본을 만듭니다.
+- name: Copy K3s config to user's kube config
+  copy:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: "/home/{{ ansible_user }}/.kube/config"
+    remote_src: yes # 원격 서버 내에서 파일을 복사할 때 사용하는 옵션입니다.
+    owner: "{{ ansible_user }}"
+    mode: '0644'
+
+# 5. 조인 토큰(Node Token) 파일 읽기
+# 에이전트 노드들이 서버에 합류할 때 비밀번호처럼 사용할 '토큰' 값을 가져옵니다.
+- name: Get K3s Node Token
+  slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: k3s_node_token_encoded
+  # [기술 포인트] slurp는 파일을 Base64로 인코딩해서 가져오므로 후속 처리가 필요합니다.
+
+# 6. 토큰을 앤서블 변수로 등록 (가장 중요)
+# 인코딩된 토큰을 디코딩하고 공백을 제거하여 k3s_node_token이라는 변수에 담습니다.
+- name: Set K3s Node Token fact
+  set_fact:
+    k3s_node_token: "{{ k3s_node_token_encoded.content | b64decode | trim }}"
+  # [기술 포인트] set_fact로 저장된 값은 다음 플레이북(k3s-agent)에서 공유해서 사용할 수 있습니다.
+
+# 7. 기본 네트워크 구성 요소(Flannel) 대기
+# 쿠버네티스 네트워크 플러그인이 정상 실행될 때까지 기다립니다.
+- name: Wait for Flannel to be ready
+  shell: kubectl get pods -n kube-system -l k8s-app=flannel --no-headers | grep -v Running | wc -l
+  register: flannel_not_ready
+  until: flannel_not_ready.stdout == "0" # "Running이 아닌 포드"가 0개가 될 때까지 반복합니다.
+  retries: 20
+  delay: 15
+
+# 8. 전체 노드 합류 확인 대기
+# 에이전트들이 정상적으로 조인하여 'Ready' 상태가 되었는지 확인합니다.
+- name: Wait for all nodes to be ready
+  shell: kubectl get nodes --no-headers | awk '{print $2}' | grep -v Ready | wc -l
+  register: not_ready_nodes
+  until: not_ready_nodes.stdout == "0"
+  retries: 30
+  delay: 10
+
+# 9. 워커 노드 역할(Role) 부여
+# K3s는 워커 노드에 자동으로 'worker' 라벨을 붙여주지 않으므로 수동으로 설정합니다.
+- name: Label worker nodes
+  shell: "kubectl label node {{ item }} node-role.kubernetes.io/worker=worker --overwrite"
+  loop: "{{ groups['agents'] }}"
+  ignore_errors: true
+  # [수정 이유] 동적 인벤토리에서 노드 이름은 AWS Private IP입니다.
+  # 루프(loop)를 돌며 에이전트 그룹에 속한 각 IP(item)를 타겟팅하여 라벨을 붙입니다.
+# 10. Metrics Server 설치
+# K3s는 Metrics Server가 기본 내장되어 있으나, 
+# 보내주신 코드처럼 커스텀 설정을 적용하고 싶을 때만 실행합니다.
+#- name: Apply Custom Metrics Server Configuration
+#  shell: |
+#   kubectl apply -f - <<EOF
+#    # (보내주신 metrics-server YAML 내용이 여기에 들어갑니다)
+#      EOF
+#  # 주의: K3s 기본 metrics-server와 충돌할 수 있으므로 
+#  # 처음 설치 시 --disable metrics-server 옵션을 사용하는 것이 좋습니다.

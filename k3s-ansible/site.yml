@@ -1,0 +1,20 @@
+---
+# [단계 1] 모든 노드 공통 환경 준비
+# OS 업데이트, 필수 패키지 설치, 방화벽 설정 등을 수행합니다.
+- name: Step 1 - Prepare all nodes
+  import_playbook: playbooks/01-prepare-nodes.yml
+
+# [단계 2] K3s Server(Master) 설치 및 설정
+# 컨트롤 플레인을 구축하고, 에이전트 합류에 필요한 토큰을 생성합니다.
+- name: Step 2 - Install K3s Server
+  import_playbook: playbooks/02-setup-server.yml
+
+# [단계 3] K3s Agent(Worker) 설치 및 클러스터 조인
+# 서버에서 발행된 토큰을 받아 에이전트 노드들을 클러스터에 합류시킵니다.
+- name: Step 3 - Install K3s Agent
+  import_playbook: playbooks/03-setup-agents.yml
+
+# [단계 4] 애플리케이션 배포 테스트
+# 클러스터 정상 작동 확인을 위해 Nginx 등을 배포합니다.
+- name: Step 4 - Deploy Nginx Application
+  import_playbook: playbooks/04-deploy-nginx.yml

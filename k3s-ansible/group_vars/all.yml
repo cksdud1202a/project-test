@@ -1,0 +1,47 @@
+---
+# 1. K3s 버전 설정
+# v1.28.x+k3s1 형식을 정확히 따르고 있습니다.
+k3s_version: "v1.28.7+k3s1"
+
+# 2. 네트워크 CIDR 설정
+# K3s 내장 Flannel 및 Service 대역을 정의합니다.
+pod_network_cidr: "10.244.0.0/16"
+service_cidr: "10.96.0.0/12"
+
+# 3. 노드 기초 설정
+# 안정성을 위해 Swap 비활성화를 유지하는 것이 좋습니다.
+disable_swap: true
+ansible_user: ubuntu
+
+# 4. K3s Server 전용 추가 인자 (k3s-server 역할에서 사용)
+# 'master' 대신 'server' 명칭을 사용합니다.
+k3s_server_args: >
+  --flannel-backend=vxlan
+  --cluster-cidr={{ pod_network_cidr }}
+  --service-cidr={{ service_cidr }}
+  --disable-cloud-controller
+  --write-kubeconfig-mode 644
+
+# 5. 방화벽 포트 설정 (Server/Agent 명칭 통일)
+# k3s_master_ports -> k3s_server_ports로 변경
+k3s_server_ports:
+  - "6443/tcp"      # K3s API server
+  - "10250/tcp"     # Kubelet API (로그 수집, exec 등에 필요)
+  - "8472/udp"      # Flannel VXLAN (멀티노드 통신 필수)
+  - "2379-2380/tcp" # 고가용성(HA) 구성 시 etcd 통신용
+
+# k3s_worker_ports -> k3s_agent_ports로 변경
+k3s_agent_ports:
+  - "10250/tcp"     # Kubelet API
+  - "8472/udp"      # Flannel VXLAN
+  - "30000-32767/tcp" # 외부 서비스 노출을 위한 NodePort 대역
+
+# 6. 클러스터 인증 토큰
+# Agent가 Server에 조인할 때 사용하는 비밀번호입니다.
+# 팁: 앤서블에서 동적으로 생성하도록 했다면 이 값은 초기 설치 시에만 참조됩니다.
+k3s_token: "your-secret-join-token"
+
+# 7. 백업 및 유지보수
+# K3s 내장 etcd(또는 SQLite) 데이터 보존 설정입니다.
+etcd_backup_enabled: true
+backup_retention_days: 7
