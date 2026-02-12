@@ -1,9 +1,0 @@
----
-- name: Prepare all nodes for K3s
-  hosts: k3s_cluster # 인벤토리에서 변경한 그룹명을 사용합니다.
-  become: true
-  gather_facts: true
-  
-  # K3s 설치 전 필수적인 공통 환경만 정리합니다.
-  roles:
-    - k3s-common
