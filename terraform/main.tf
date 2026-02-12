@@ -50,23 +50,37 @@ resource "aws_instance" "k3s_agent" {
   # Server가 먼저 설치되어야 Agent가 참여할 수 있음
   depends_on = [aws_instance.k3s_server]
 
+  # EBS 추가 (EC2 삭제돼도 데이터 유지)
+  ebs_block_device {
+    device_name           = "/dev/sdf"
+    volume_size           = 10        # 10GB (프리티어 30GB 안에서 무료)
+    volume_type           = "gp2"
+    delete_on_termination = false     # EC2 삭제돼도 EBS는 남아있음
+  }
+
   user_data = <<-EOF
-              #!/bin/bash
-              # 1. Swap 설정
-              fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
-              echo '/swapfile none swap sw 0 0' >> /etc/fstab
+            #!/bin/bash
+            # 1. Swap 설정
+            fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+            echo '/swapfile none swap sw 0 0' >> /etc/fstab
 
-              # 2. 라우팅 테이블 수정 (인터넷 기본 통로를 Server 서버로 변경)
-              SERVER_IP="${aws_instance.k3s_server.private_ip}"
-              ip route add 192.168.1.0/24 dev eth0 # Server와 내부 통신 유지
-              ip route replace default via $SERVER_IP dev eth0
+            # 2. EBS 마운트 (Prometheus 데이터 저장용)
+            mkfs.ext4 /dev/sdf
+            mkdir -p /data/prometheus
+            mount /dev/sdf /data/prometheus
+            echo '/dev/sdf /data/prometheus ext4 defaults 0 0' >> /etc/fstab
 
-              # 3. K3s Agent 설치 (Server가 준비될 때까지 재시도)
-              until curl -sfL https://get.k3s.io | K3S_URL="https://$SERVER_IP:6443" \
-                K3S_TOKEN="${var.k3s_token}" sh -s - agent; do
-                sleep 10
-              done
-              EOF
+            # 3. 라우팅 테이블 수정
+            SERVER_IP="${aws_instance.k3s_server.private_ip}"
+            ip route add 192.168.1.0/24 dev eth0
+            ip route replace default via $SERVER_IP dev eth0
+
+            # 4. K3s Agent 설치
+            until curl -sfL https://get.k3s.io | K3S_URL="https://$SERVER_IP:6443" \
+              K3S_TOKEN="${var.k3s_token}" sh -s - agent; do
+              sleep 10
+            done
+            EOF
 
   tags = { Name = "${var.project_name}-agent-${count.index}" }
 }

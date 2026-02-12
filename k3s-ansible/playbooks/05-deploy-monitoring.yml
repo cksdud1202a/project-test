@@ -36,6 +36,7 @@
     # 5. Prometheus kubectl apply
     - name: Apply Prometheus stack
       shell: |
+        kubectl apply -f /tmp/monitoring/prometheus-pvc.yaml
         kubectl apply -f /tmp/monitoring/prometheus-rbac.yaml
         kubectl apply -f /tmp/monitoring/prometheus-config.yaml
         kubectl apply -f /tmp/monitoring/prometheus-deployment.yaml
@@ -46,6 +47,7 @@
     # ─────────────────────────────────────
 
     # 6. Grafana Helm으로 설치
+    # upgrade --install : 없으면 install, 있으면 upgrade (멱등성 보장)
     - name: Install Grafana via Helm
       shell: |
         helm upgrade --install grafana grafana/grafana \
@@ -53,8 +55,8 @@
           --set adminUser=admin \
           --set adminPassword=admin \
           --set service.type=NodePort \
-          --set service.nodePort=30665
-      # upgrade --install : 없으면 install, 있으면 upgrade (멱등성 보장)
+          --set service.nodePort=30665 \
+          --set nodeSelector."kubernetes\.io/hostname"=kube-node-1
 
     # 7. 완료 확인
     - name: Check all pods

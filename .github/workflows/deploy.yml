@@ -7,15 +7,11 @@ on:
 
 jobs:
   # -------------------------------------------------------------------
-  # 1) Terraform Job: 인프라 생성 및 IP 추출
+  # 1) Terraform Job: 인프라 생성
   # -------------------------------------------------------------------
   terraform:
     name: Provision Infrastructure
     runs-on: [ self-hosted, Linux, X64 ] #본인의 Runners label 확인
-    outputs:
-      # Ansible Job으로 넘겨줄 IP들
-      server_ip: ${{ steps.set_outputs.outputs.server_ip }}
-      agent_ip: ${{ steps.set_outputs.outputs.agent_ip }}
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -33,14 +29,6 @@ jobs:
         working-directory: terraform
         run: terraform apply -auto-approve
 
-      # outputs.tf에 정의된 이름을 기반으로 값을 추출하여 다음 Job으로 전달
-      - name: Set Outputs for Ansible
-        id: set_outputs
-        working-directory: terraform
-        run: |
-          echo "server_ip=$(terraform output -raw server_public_ip)" >> $GITHUB_OUTPUT
-          echo "agent_ip=$(terraform output -raw agent_private_ip)" >> $GITHUB_OUTPUT
-
   # -------------------------------------------------------------------
   # 2) Ansible Job: 클러스터 구성 및 Nginx 배포
   # -------------------------------------------------------------------
@@ -50,7 +38,10 @@ jobs:
     needs: terraform  # Terraform이 성공해야만 실행됨
     env:
       ANSIBLE_HOST_KEY_CHECKING: "False"
-      SERVER_IP: ${{ needs.terraform.outputs.server_ip }} # Write Job Summary에서 $SERVER_IP을 사용하기 위해 추가
+      #Terraform outputs 대신 AWS API로 직접 조회 (aws ec2 describe-instances 명령어 실행을 위해)
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
 
     steps:
       - name: Checkout repository
@@ -64,6 +55,9 @@ jobs:
           ${{ secrets.ANSIBLE_PRIVATE_KEY }}
           EOF
           chmod 600 ~/.ssh/id_rsa
+          # 디버깅: 키 형식 확인
+          head -1 ~/.ssh/id_rsa
+          ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub || echo "Invalid key format!"
 
       # 2. SSH config 설정 
       - name: Setup SSH config
@@ -76,17 +70,42 @@ jobs:
             ForwardAgent yes
           EOF
 
+      # AWS API로 현재 실행 중인 인스턴스 IP 조회
+      - name: Get Instance IPs from AWS API
+        id: get_ips
+        run: |
+          # Server 노드 Public IP 조회
+          SERVER_IP=$(aws ec2 describe-instances \
+            --region ${AWS_DEFAULT_REGION} \
+            --filters \
+              "Name=tag:Name,Values=k3s-project-server" \
+              "Name=instance-state-name,Values=running" \
+            --query "Reservations[*].Instances[*].PublicIpAddress" \
+            --output text)
+          
+          # Agent 노드들 Private IP 조회
+          AGENT_IPS=$(aws ec2 describe-instances \
+            --region ${AWS_DEFAULT_REGION} \
+            --filters \
+              "Name=tag:Name,Values=k3s-project-agent" \
+              "Name=instance-state-name,Values=running" \
+            --query "Reservations[*].Instances[*].PrivateIpAddress" \
+            --output text)
+          
+          # 배열로 변환
+          AGENT_ARRAY=($AGENT_IPS)
+          
+          echo "SERVER_IP=$SERVER_IP" >> $GITHUB_ENV
+          echo "AGENT1_IP=${AGENT_ARRAY[0]}" >> $GITHUB_ENV
+          echo "AGENT2_IP=${AGENT_ARRAY[1]}" >> $GITHUB_ENV
+          
+          echo "✅ Server IP: $SERVER_IP"
+          echo "✅ Agent IPs: ${AGENT_ARRAY[@]}"
+
       # 템플릿(hosts.yml.tmpl)을 실제 인벤토리(hosts.yml)로 변환
       - name: Generate Inventory from Template
         working-directory: k3s-ansible
-        env:
-          SERVER_IP: ${{ needs.terraform.outputs.server_ip }}
-          AGENT_IP: ${{ needs.terraform.outputs.agent_ip }}
         run: |
-          export AGENT1_IP=$(echo "$AGENT_IP" | cut -d',' -f1)
-          export AGENT2_IP=$(echo "$AGENT_IP" | cut -d',' -f2)
-          export SERVER_IP="$SERVER_IP"
-          
           envsubst < inventory/hosts.yml.tmpl > inventory/hosts.yml
           echo "--- Generated Inventory ---"
           cat inventory/hosts.yml
