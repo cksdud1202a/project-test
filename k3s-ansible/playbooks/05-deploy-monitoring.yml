@@ -36,7 +36,6 @@
     # 5. Prometheus kubectl apply
     - name: Apply Prometheus stack
       shell: |
-        kubectl apply -f /tmp/monitoring/prometheus-pvc.yaml
         kubectl apply -f /tmp/monitoring/prometheus-rbac.yaml
         kubectl apply -f /tmp/monitoring/prometheus-config.yaml
         kubectl apply -f /tmp/monitoring/prometheus-deployment.yaml

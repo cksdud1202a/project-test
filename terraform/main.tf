@@ -50,14 +50,6 @@ resource "aws_instance" "k3s_agent" {
   # Server가 먼저 설치되어야 Agent가 참여할 수 있음
   depends_on = [aws_instance.k3s_server]
 
-  # EBS 추가 (EC2 삭제돼도 데이터 유지)
-  ebs_block_device {
-    device_name           = "/dev/sdf"
-    volume_size           = 10        # 10GB (프리티어 30GB 안에서 무료)
-    volume_type           = "gp2"
-    delete_on_termination = false     # EC2 삭제돼도 EBS는 남아있음
-  }
-
   user_data = <<-EOF
           #!/bin/bash
           set -x  # 디버깅용
@@ -66,16 +58,6 @@ resource "aws_instance" "k3s_agent" {
           # 1. Swap 설정
           fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
           echo '/swapfile none swap sw 0 0' >> /etc/fstab
-          
-          # 2. EBS 마운트 (Prometheus 데이터 저장용)
-          while [ ! -e /dev/sdf ]; do
-            echo "Waiting for EBS volume..."
-            sleep 5
-          done
-          mkfs.ext4 -F /dev/sdf
-          mkdir -p /data/prometheus
-          mount /dev/sdf /data/prometheus
-          echo '/dev/sdf /data/prometheus ext4 defaults 0 0' >> /etc/fstab
           
           # 3. K3s Agent 설치 (라우팅 변경 전에 먼저!)
           SERVER_IP="${aws_instance.k3s_server.private_ip}"
