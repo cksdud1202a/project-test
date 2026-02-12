@@ -14,4 +14,3 @@ k3s-ansible/inventory/hosts.yml   # GHA가 실시간으로 만드는 파일이�
 *.log                      # 로그 파일들
 .env                       # 환경 변수 파일
 
-k3s-ansible/

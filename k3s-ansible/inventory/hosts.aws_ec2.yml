@@ -1,0 +1,36 @@
+plugin: aws_ec2
+regions:
+  - ap-northeast-2
+
+# 1. 대상 필터링: 프로젝트 이름이 일치하고 '실행 중'인 인스턴스만 수집
+filters:
+  tag:Project: "k3s-project"
+  instance-state-name: [ 'running' ]
+
+# 2. 그룹화: Role 태그 값에 따라 'server' 그룹과 'agent' 그룹으로 자동 분류
+keyed_groups:
+  - key: tags.Role
+    separator: ""
+
+# 3. 호스트 식별자: Ansible 내부에서 Private IP를 이름으로 사용
+hostnames:
+  - private-ip-address
+
+# 4. 접속 변수 자동 조립 (가장 중요)
+compose:
+  # 모든 노드에 접속할 기본 사용자 설정
+  ansible_user: " 'ubuntu' "
+  
+  # 실제 접속할 IP 주소 매핑
+  ansible_host: private_ip_address
+
+  # [꼬임 방지 로직]
+  # Role 태그가 'agent'인 경우에만 서버를 거쳐가는 ProxyCommand를 적용합니다.
+  # 서버(server) 노드는 공인 IP(public_ip_address)가 있다면 그것을 우선 사용하도록 설정 가능합니다.
+  ansible_ssh_common_args: >
+    if (tags.Role == 'agent') then
+      "-o ProxyCommand='ssh -W %h:%p -q ubuntu@{{ tags.ServerPublicIP }} -o StrictHostKeyChecking=no'"
+    else
+      ""
+    endif
+   
