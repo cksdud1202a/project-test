@@ -2,7 +2,7 @@ name: Provision & Configure K3s
 
 on:
   push:
-    branches: [ "main" ]  # 본인의 메인 브랜치명 확인
+    branches: [ "master" ]  # 본인의 메인 브랜치명 확인
   workflow_dispatch:      # 수동 실행 가능
 
 jobs:
