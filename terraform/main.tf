@@ -59,28 +59,40 @@ resource "aws_instance" "k3s_agent" {
   }
 
   user_data = <<-EOF
-            #!/bin/bash
-            # 1. Swap 설정
-            fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
-            echo '/swapfile none swap sw 0 0' >> /etc/fstab
-
-            # 2. EBS 마운트 (Prometheus 데이터 저장용)
-            mkfs.ext4 /dev/sdf
-            mkdir -p /data/prometheus
-            mount /dev/sdf /data/prometheus
-            echo '/dev/sdf /data/prometheus ext4 defaults 0 0' >> /etc/fstab
-
-            # 3. 라우팅 테이블 수정
-            SERVER_IP="${aws_instance.k3s_server.private_ip}"
-            ip route add 192.168.1.0/24 dev eth0
-            ip route replace default via $SERVER_IP dev eth0
-
-            # 4. K3s Agent 설치
-            until curl -sfL https://get.k3s.io | K3S_URL="https://$SERVER_IP:6443" \
-              K3S_TOKEN="${var.k3s_token}" sh -s - agent; do
-              sleep 10
-            done
-            EOF
+          #!/bin/bash
+          set -x  # 디버깅용
+          exec > >(tee /var/log/user-data.log) 2>&1  # 로그 저장
+          
+          # 1. Swap 설정
+          fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+          echo '/swapfile none swap sw 0 0' >> /etc/fstab
+          
+          # 2. EBS 마운트 (Prometheus 데이터 저장용)
+          while [ ! -e /dev/sdf ]; do
+            echo "Waiting for EBS volume..."
+            sleep 5
+          done
+          mkfs.ext4 -F /dev/sdf
+          mkdir -p /data/prometheus
+          mount /dev/sdf /data/prometheus
+          echo '/dev/sdf /data/prometheus ext4 defaults 0 0' >> /etc/fstab
+          
+          # 3. K3s Agent 설치 (라우팅 변경 전에 먼저!)
+          SERVER_IP="${aws_instance.k3s_server.private_ip}"
+          until curl -sfL https://get.k3s.io | K3S_URL="https://$SERVER_IP:6443" \
+            K3S_TOKEN="${var.k3s_token}" sh -s - agent \
+            --node-ip $(hostname -I | awk '{print $1}'); do
+            echo "K3s installation failed, retrying in 10s..."
+            sleep 10
+          done
+          
+          # 4. K3s 설치 완료 후 라우팅 테이블 수정
+          sleep 5
+          ip route add 192.168.1.0/24 dev eth0 || true
+          ip route replace default via $SERVER_IP dev eth0
+          
+          echo "User data completed successfully" >> /var/log/user-data.log
+          EOF
 
   tags = { Name = "${var.project_name}-agent-${count.index}" }
 }
