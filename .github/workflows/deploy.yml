@@ -47,6 +47,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+# pip3 설치 및 boto3 라이브러리 설치 (가장 중요)
+      - name: Install Python and AWS dependencies
+        run: |
+          # pip3가 없는 경우 설치
+          sudo apt-get update
+          sudo apt-get install -y python3-pip
+          # Ansible이 사용하는 Python 환경에 boto3 설치
+          python3 -m pip install boto3 botocore
+        
+
       # 1. SSH 키 설정 (인증용 키 파일만 생성)
       - name: Setup SSH private key
         run: |
