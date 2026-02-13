@@ -19,18 +19,7 @@ hostnames:
 # 4. 접속 변수 자동 조립 (가장 중요)
 compose:
   # 모든 노드에 접속할 기본 사용자 설정
-  ansible_user: " 'ubuntu' "
-  
-  # 실제 접속할 IP 주소 매핑
-  ansible_host: private_ip_address
+  ansible_user: "'ubuntu'"
 
-  # [꼬임 방지 로직]
-  # Role 태그가 'agent'인 경우에만 서버를 거쳐가는 ProxyCommand를 적용합니다.
-  # 서버(server) 노드는 공인 IP(public_ip_address)가 있다면 그것을 우선 사용하도록 설정 가능합니다.
-  ansible_ssh_common_args: >
-    if (tags.Role == 'agent') then
-      "-o ProxyCommand='ssh -W %h:%p -q ubuntu@{{ tags.ServerPublicIP }} -o StrictHostKeyChecking=no'"
-    else
-      ""
-    endif
-   
+  # 서버는 Public IP로, 에이전트는 Private IP로 접속 시도
+  ansible_host: public_ip_address if (tags.Role == 'server') else private_ip_address
