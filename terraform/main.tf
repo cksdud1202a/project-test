@@ -41,7 +41,6 @@ resource "aws_instance" "k3s_server" {
     Name           = "${var.project_name}-server"
     Project        = "k3s-project"    # 전체 프로젝트 식별자
     Role           = "server"         # 서버 그룹 분류용
-    ServerPublicIP = self.public_ip   # Ansible에서 점프호스트 IP로 자동 참조
   }
 }
 
