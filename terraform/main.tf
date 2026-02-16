@@ -79,5 +79,6 @@ resource "aws_instance" "k3s_agent" {
     Name    = "${var.project_name}-agent-${count.index + 1}"
     Project = "k3s-project"    # 전체 프로젝트 식별자
     Role    = "agent"          # 에이전트 그룹 분류용
+    ServerPublicIP = aws_instance.k3s_server.public_ip
   }
 }
