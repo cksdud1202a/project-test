@@ -74,15 +74,52 @@ jobs:
 
 # --- [추가되는 부분] 동적 인벤토리 디버그 로그 ---
       # 2. 전체 자동 배포 스크립트 실행
-      - name: Run Deployment Script
+      - name: 🔬 Ultimate Forensic Debugging
         working-directory: k3s-ansible
         run: |
-          chmod +x deploy.sh
-          # 파이썬에게 직접 사이트 패키지 경로를 찾아달라고 해서 PYTHONPATH에 추가합니다 (버전 차이 방지)
-          export PYTHONPATH=$PYTHONPATH:$(python3 -m site --user-site)
-          ./deploy.sh
+          echo "========================================================="
+          echo "🔎 1. 파이썬 환경의 '진실' (Path & Version)"
+          echo "========================================================="
+          which python3
+          python3 --version
+          python3 -c "import sys; print('Python Path:', sys.path)"
+          
+          echo "========================================================="
+          echo "🔎 2. Boto3 로드 가능 여부 직접 검증 (수동 테스트)"
+          echo "========================================================="
+          # 이 코드가 실패하면 앤서블도 절대 못 읽습니다.
+          python3 -m pip list | grep -E "boto3|botocore|ansible"
+          python3 -c "
+          try:
+              import boto3
+              import botocore
+              print('✅ Boto3 Load Success!')
+              print('Location:', boto3.__file__)
+          except ImportError as e:
+              print(f'❌ Boto3 Load Failed: {e}')
+          "
+
+          echo "========================================================="
+          echo "🔎 3. Ansible Plugin 로더 추적"
+          echo "========================================================="
+          # 앤서블이 플러그인을 찾을 때 뒤져보는 경로들
+          ansible-config dump | grep -E "COLLECTIONS_PATHS|DEFAULT_ROLES_PATH"
+          # 현재 시스템에 'amazon.aws' 컬렉션이 설치되어 있는지 확인
+          ansible-galaxy collection list | grep amazon.aws || echo "❌ Amazon AWS Collection missing!"
+
+          echo "========================================================="
+          echo "🔎 4. 인벤토리 파싱 원시 로그 (Traceback 모드)"
+          echo "========================================================="
+          # ANSIBLE_DEBUG=1은 앤서블 소스코드 내부의 에러 Traceback을 그대로 뱉어냅니다.
+          # 가장 지저분하지만 가장 정확한 '범인'의 이름이 찍힙니다.
+          export ANSIBLE_DEBUG=1
+          export ANSIBLE_VERBOSITY=4
+          export ANSIBLE_INVENTORY_ENABLED=aws_ec2,yaml,ini
+          ansible-inventory -i inventory/hosts.aws_ec2.yml --list
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+          # 경로 강제 주입
+          PYTHONPATH: ${{ env.PYTHONPATH }}:$(python3 -m site --user-site)
           
