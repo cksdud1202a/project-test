@@ -72,8 +72,19 @@ jobs:
           echo "${{ secrets.ANSIBLE_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      # [삭제됨] Setup SSH config (인벤토리 파일의 compose 설정이 대신함)
-      # [삭제됨] Generate Inventory from Template (envsubst 로직 필요 없음)
+# --- [추가되는 부분] 동적 인벤토리 디버그 로그 ---
+      - name: Debug Inventory (Show All Instances & Tags)
+        working-directory: k3s-ansible
+        run: |
+          echo "🔍 현재 AWS에서 수집된 인벤토리 목록을 확인합니다..."
+          # 트리 형태로 그룹 확인
+          ansible-inventory -i aws_ec2.yml --graph
+          # 상세 데이터 확인 (태그 및 변수 주입 상태)
+          ansible-inventory -i aws_ec2.yml --list
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
 
       # 2. 전체 자동 배포 스크립트 실행
       - name: Run Deployment Script
