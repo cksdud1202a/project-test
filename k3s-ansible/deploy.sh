@@ -19,6 +19,9 @@ fi
 # ---------------------------------------------------------
 echo "🔍 AWS API를 통해 서버(Bastion) IP를 조회 중..."
 
+# 인벤토리에서 'server' 그룹의 첫 번째 호스트 이름을 가져옵니다.
+HOST_NAME=$(ansible-inventory -i $INV --list | jq -r '.server.hosts[0]')
+
 # API로부터 'server' 그룹에 속한 첫 번째 호스트의 공인 IP를 직접 가져옵니다.
 SERVER_PUBLIC_IP=$(ansible-inventory -i $INV --list | jq -r '._meta.hostvars[.server.hosts[0]].public_ip_address')
 
