@@ -55,6 +55,10 @@ jobs:
           sudo apt-get install -y python3-pip
           # Ansible이 사용하는 Python 환경에 boto3 설치
           python3 -m pip install boto3 botocore
+          # Ansible이 K8s/Helm 명령을 내리기 위한 라이브러리
+          python3 -m pip install kubernetes PyYAML 
+          # K8s 관련 전용 모듈(Collection) 설치
+          ansible-galaxy collection install kubernetes.core
 
       # [추가] jq 설치 (API 파싱용)
       - name: Install jq
