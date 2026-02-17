@@ -1,0 +1,41 @@
+---
+# 1. Helm 바이너리 설치
+- name: Install Helm via script
+  shell: |
+    curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    chmod 700 get_helm.sh
+    ./get_helm.sh
+  args:
+    creates: /usr/local/bin/helm
+
+# 2. Prometheus 커뮤니티 Helm 레포지토리 추가
+- name: Add Prometheus community repo
+  kubernetes.core.helm_repository:
+    name: prometheus-community
+    repo_url: "https://prometheus-community.github.io/helm-charts"
+
+# 3. 모니터링 네임스페이스 생성
+- name: Create monitoring namespace
+  kubernetes.core.k8s:
+    name: "{{ monitoring_namespace }}"
+    kind: Namespace
+    state: present
+
+# 4. 통합 배포 (외부 파일 로드 + 실시간 IP 주입)
+- name: Deploy kube-prometheus-stack
+  kubernetes.core.helm:
+    name: "prometheus-stack"
+    chart_ref: "prometheus-community/kube-prometheus-stack"
+    chart_version: "{{ prometheus_chart_version }}"
+    release_namespace: "{{ monitoring_namespace }}"
+    # [1순위] 외부 설정 파일을 먼저 읽어옵니다.
+    values_files:
+      - "../kubernetes/monitoring/custom-values.yaml"
+    # [2순위] ansible_host 처럼 실시간으로 변하는 값만 여기서 직접 주입합니다.
+    # 여기서 설정한 값이 외부 파일의 값을 덮어쓰므로 가장 정확합니다.
+    values:
+      grafana:
+        grafana.ini:
+          server:
+            root_url: "http://{{ ansible_host }}:32000"
+    wait: true
