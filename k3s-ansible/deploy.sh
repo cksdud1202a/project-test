@@ -58,11 +58,11 @@ echo "📋 로컬 PC에서 kubectl을 사용하고 싶다면:"
 echo "    mkdir -p ~/.kube"
 echo "    scp ubuntu@$SERVER_PUBLIC_IP:~/.kube/config ~/.kube/config"
 
-echo "📊 [3] 모니터링 대시보드 접속 (Grafana)"
-echo "    URL: http://$SERVER_PUBLIC_IP:32000"
-echo "    ID:  admin"
-echo "    PW:  admin"  # all.yml에서 수정한 경우 해당 값을 입력하세요.
-echo "----------------------------------------------------------------"
+#echo "📊 [3] 모니터링 대시보드 접속 (Grafana)"
+#echo "    URL: http://$SERVER_PUBLIC_IP:32000"
+#echo "    ID:  admin"
+#echo "    PW:  admin"  # all.yml에서 수정한 경우 해당 값을 입력하세요.
+#echo "----------------------------------------------------------------"
 
 echo ""
 echo "🔍 클러스터 상태 최종 확인 중..."
