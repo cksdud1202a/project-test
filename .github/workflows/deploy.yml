@@ -116,8 +116,8 @@ jobs:
           echo "========================================================="
           # ANSIBLE_DEBUG=1은 앤서블 소스코드 내부의 에러 Traceback을 그대로 뱉어냅니다.
           # 가장 지저분하지만 가장 정확한 '범인'의 이름이 찍힙니다.
-          export ANSIBLE_DEBUG=1
-          export ANSIBLE_VERBOSITY=4
+          #export ANSIBLE_DEBUG=1
+          #export ANSIBLE_VERBOSITY=4
           export ANSIBLE_INVENTORY_ENABLED=aws_ec2,yaml,ini
           ansible-inventory -i inventory/hosts.aws_ec2.yml --list
           echo "========================================================="
