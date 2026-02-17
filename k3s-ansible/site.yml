@@ -18,3 +18,7 @@
 # 클러스터 정상 작동 확인을 위해 Nginx 등을 배포합니다.
 - name: Step 4 - Deploy Nginx Application
   import_playbook: playbooks/04-deploy-nginx.yml
+
+  # [단계 5] 모니터링 시스템 구축
+- name: Step 5 - Setup Monitoring
+  import_playbook: playbooks/05-setup-monitoring.yml
