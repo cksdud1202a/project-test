@@ -120,6 +120,12 @@ jobs:
           export ANSIBLE_VERBOSITY=4
           export ANSIBLE_INVENTORY_ENABLED=aws_ec2,yaml,ini
           ansible-inventory -i inventory/hosts.aws_ec2.yml --list
+          echo "========================================================="
+          echo "🚀 배포 스크립트 실행 (deploy.sh)"
+          echo "========================================================="
+          chmod +x deploy.sh
+          export PYTHONPATH=$PYTHONPATH:$(python3 -m site --user-site)
+          ./deploy.sh
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
