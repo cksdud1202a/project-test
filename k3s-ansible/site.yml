@@ -19,6 +19,6 @@
 - name: Step 4 - Deploy Nginx Application
   import_playbook: playbooks/04-deploy-nginx.yml
 
-  # [단계 5] 모니터링 시스템 구축
-- name: Step 5 - Setup Monitoring
-  import_playbook: playbooks/05-setup-monitoring.yml
+# [단계 5] 모니터링 시스템 구축
+#- name: Step 5 - Setup Monitoring
+#  import_playbook: playbooks/05-setup-monitoring.yml
