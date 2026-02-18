@@ -25,6 +25,15 @@ resource "aws_security_group" "server_sg" {
 	  description = "Allow Nginx NodePort on Server Node"
 	}
 
+# --- 추가할 부분: Grafana 접속 허용 ---
+  ingress { 
+    from_port   = 32000
+    to_port     = 32000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] 
+    description = "Allow Grafana Dashboard Access"
+  }
+
   ingress { # 프라이빗 서브넷(Agent)에서 오는 모든 트래픽 허용 (NAT 역할)
     from_port   = 0
     to_port     = 0
