@@ -29,7 +29,7 @@ resource "aws_security_group" "server_sg" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = [aws_subnet.private.cidr_block]
+    cidr_blocks = [aws_vpc.main.cidr_block]
   }
 
   egress { # 모든 외부 출력 허용
@@ -49,7 +49,7 @@ resource "aws_security_group" "agent_sg" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = [aws_subnet.public.cidr_block]
+    cidr_blocks = [aws_vpc.main.cidr_block]
   }
   
   # --- 추가된 부분: Nginx NodePort 접속 허용 ---
