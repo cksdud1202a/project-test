@@ -35,6 +35,9 @@
     # 여기서 설정한 값이 외부 파일의 값을 덮어쓰므로 가장 정확합니다.
     values:
       grafana:
+        service:
+          type: NodePort
+          nodePort: 32000
         grafana.ini:
           server:
             root_url: "http://{{ ansible_host }}:32000"
