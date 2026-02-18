@@ -79,7 +79,7 @@
 # K3s는 워커 노드에 자동으로 'worker' 라벨을 붙여주지 않으므로 수동으로 설정합니다.
 - name: Label worker nodes
   shell: "kubectl label node {{ item }} node-role.kubernetes.io/worker=worker --overwrite"
-  loop: "{{ groups['agents'] }}"
+  loop: "{{ groups['agent'] }}"
   ignore_errors: true
   # [수정 이유] 동적 인벤토리에서 노드 이름은 AWS Private IP입니다.
   # 루프(loop)를 돌며 에이전트 그룹에 속한 각 IP(item)를 타겟팅하여 라벨을 붙입니다.
