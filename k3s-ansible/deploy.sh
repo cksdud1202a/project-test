@@ -41,7 +41,7 @@ ansible all -i $INV -m ping
 
 # 4. 전체 플레이북 실행
 echo "📦 K3s 전체 설치 프로세스 가동 (site.yml)..."
-ansible-playbook -i $INV site.yml
+ansible-playbook -i $INV site.yml -vvvv
 
 echo ""
 echo "✅ K3s 클러스터 배포가 성공적으로 완료되었습니다!"
