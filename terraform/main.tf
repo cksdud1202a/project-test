@@ -17,6 +17,7 @@ resource "aws_instance" "k3s_server" {
   vpc_security_group_ids = [aws_security_group.server_sg.id]
   
   # [중요] 타 노드의 트래픽을 전달하기 위해 원본/대상 확인 해제 (NAT 역할 수행용)
+  #AWS 인스턴스가 자신을 목적지로 하지 않는 트래픽도 전달할 수 있게 허용하는 설정
   source_dest_check      = false
 
   user_data = <<-EOF
@@ -51,30 +52,22 @@ resource "aws_instance" "k3s_agent" {
   depends_on = [aws_instance.k3s_server]
 
   user_data = <<-EOF
-          #!/bin/bash
-          set -x  # 디버깅용
-          exec > >(tee /var/log/user-data.log) 2>&1  # 로그 저장
-          
-          # 1. Swap 설정
-          fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
-          echo '/swapfile none swap sw 0 0' >> /etc/fstab
-          
-          # 3. K3s Agent 설치 (라우팅 변경 전에 먼저!)
-          SERVER_IP="${aws_instance.k3s_server.private_ip}"
-          until curl -sfL https://get.k3s.io | K3S_URL="https://$SERVER_IP:6443" \
-            K3S_TOKEN="${var.k3s_token}" sh -s - agent \
-            --node-ip $(hostname -I | awk '{print $1}'); do
-            echo "K3s installation failed, retrying in 10s..."
-            sleep 10
-          done
-          
-          # 4. K3s 설치 완료 후 라우팅 테이블 수정
-          sleep 5
-          ip route add 192.168.1.0/24 dev eth0 || true
-          ip route replace default via $SERVER_IP dev eth0
-          
-          echo "User data completed successfully" >> /var/log/user-data.log
-          EOF
+              #!/bin/bash
+              # 1. Swap 설정
+              fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+              echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
+              # 2. 라우팅 테이블 수정 (인터넷 기본 통로를 Server 서버로 변경)
+              SERVER_IP="${aws_instance.k3s_server.private_ip}"
+              ip route add 192.168.1.0/24 dev eth0 # Server와 내부 통신 유지
+              ip route replace default via $SERVER_IP dev eth0
+
+              # 3. K3s Agent 설치 (Server가 준비될 때까지 재시도)
+              until curl -sfL https://get.k3s.io | K3S_URL="https://$SERVER_IP:6443" \
+                K3S_TOKEN="${var.k3s_token}" sh -s - agent; do
+                sleep 10
+              done
+              EOF
 
   tags = { Name = "${var.project_name}-agent-${count.index}" }
 }

@@ -15,7 +15,7 @@ ansible servers -m shell -a "kubectl get nodes -o wide"
 # 3. 모든 네임스페이스의 포드 상태 확인
 # K3s는 내장된 Flannel, CoreDNS, Metrics-server 등이 잘 떠있는지 확인하는 것이 핵심입니다.
 echo "3. Checking system pods status..."
-ansible servers -m shell -a "kubectl get pods -A"
+ansible severs -m shell -a "kubectl get pods -A"
 
 # 4. 서비스 가동 상태 확인 (K3s 맞춤형)
 # K3s는 Server 노드에서는 'k3s', Agent 노드에서는 'k3s-agent' 서비스를 사용합니다.
