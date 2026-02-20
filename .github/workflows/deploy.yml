@@ -47,6 +47,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install boto3
+        run: pip3 install boto3
+
       # 1. SSH 키 설정 (인증용 키 파일만 생성)
       - name: Setup SSH private key
         run: |
