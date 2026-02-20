@@ -18,11 +18,11 @@ compose:
   ansible_user: ubuntu
 
   ansible_host: >-
-    {{ public_ip_address if tag_Role == 'server'
+    {{ public_ip_address if tags.Role == 'server'
        else private_ip_address }}
 
   ansible_ssh_common_args: >-
     {{ "-o ProxyCommand='ssh -W %h:%p -q ubuntu@" +
     hostvars[groups['server'][0]].public_ip_address +
     " -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa'"
-    if tag_Role == 'agent' else "" }}
+    if tags.Role == 'agent' else "" }}
