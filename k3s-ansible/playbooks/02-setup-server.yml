@@ -3,5 +3,14 @@
   hosts: servers
   become: true
   gather_facts: true
+
   roles:
     - k3s-server
+
+  tasks:
+    - name: Wait for Kubernetes API to be ready
+      shell: kubectl get nodes
+      register: result
+      retries: 15
+      delay: 5
+      until: result.rc == 0
