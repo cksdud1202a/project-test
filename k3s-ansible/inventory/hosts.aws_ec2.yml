@@ -5,10 +5,11 @@ regions:
 
 filters:
   tag:Project: "k3s-project"
-  instance-state-name: [ "running" ]
+  instance-state-name: running
 
 keyed_groups:
   - key: tags.Role
+    prefix: ""
     separator: ""
 
 hostnames:
@@ -17,12 +18,14 @@ hostnames:
 compose:
   ansible_user: ubuntu
 
-  ansible_host: >-
+  # 서버는 Public IP로 직접 접속
+  # 에이전트는 Private IP로 접속
+  ansible_host: >
     {{ public_ip_address if tags.Role == 'server'
        else private_ip_address }}
 
-  ansible_ssh_common_args: >-
-    {{ "-o ProxyCommand='ssh -W %h:%p -q ubuntu@" +
-    hostvars[groups['server'][0]].public_ip_address +
-    " -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa'"
-    if tags.Role == 'agent' else "" }}
+  # agent는 server 통해 Proxy 접속
+  ansible_ssh_common_args: >
+    {% if tags.Role == 'agent' %}
+    -o ProxyCommand="ssh -W %h:%p -q ubuntu@{{ hostvars[groups['server'][0]].public_ip_address }} -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa"
+    {% endif %}

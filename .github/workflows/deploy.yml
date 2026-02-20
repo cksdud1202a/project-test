@@ -6,20 +6,18 @@ on:
   workflow_dispatch:
 
 jobs:
-  # -------------------------------------------------------------------
-  # 1) Terraform Job: 인프라 생성 (IP 추출 단계 삭제!)
-  # -------------------------------------------------------------------
+
   terraform:
     name: Provision Infrastructure
     runs-on: [ self-hosted, Linux, X64 ]
+
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Terraform Init
         working-directory: terraform
@@ -29,38 +27,46 @@ jobs:
         working-directory: terraform
         run: terraform apply -auto-approve
 
-  # ------------------------------------------------------------------
-  # 2) Ansible Job: 동적 인벤토리를 이용한 클러스터 구성
-  # ------------------------------------------------------------------
+      # 🔥 EC2 SSH 준비 대기
+      - name: Wait for instances
+        run: sleep 60
+
+
   ansible:
     name: Configure K3s cluster & Deploy App
     runs-on: [ self-hosted, Linux, X64 ]
     needs: terraform
+
     env:
-      # 🔥 중요! Ansible이 AWS API를 호출하려면 이 인증정보 필요
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
       ANSIBLE_HOST_KEY_CHECKING: "False"
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install boto3
-        run: pip3 install boto3
+      - name: Install Python deps
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install boto3 botocore
 
-      # 1. SSH 키 설정 (인증용 키 파일만 생성)
+      - name: Install Ansible AWS Collection
+        run: |
+          ansible-galaxy collection install amazon.aws
+
       - name: Setup SSH private key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.ANSIBLE_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      # ❌ [삭제됨] Setup SSH config (인벤토리 파일의 compose 설정이 대신함)
-      # ❌ [삭제됨] Generate Inventory from Template (envsubst 로직 필요 없음)
+      - name: Debug Inventory
+        working-directory: k3s-ansible
+        run: |
+          ansible-inventory -i inventory/hosts.aws_ec2.yml --graph
+          ansible-inventory -i inventory/hosts.aws_ec2.yml --list
 
-      # 2. 전체 자동 배포 스크립트 실행
       - name: Run Deployment Script
         working-directory: k3s-ansible
         run: |
