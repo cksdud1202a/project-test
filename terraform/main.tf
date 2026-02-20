@@ -41,7 +41,7 @@ resource "aws_instance" "k3s_server" {
   tags = {
     Name           = "${var.project_name}-server"   # 보기 좋은 이름
     Role           = "server"                        # Ansible이 이걸로 그룹 분류!
-    ServerPublicIP = self.public_ip                  # Agent들이 SSH 접속할 때 사용
+    ServerPublicIP = aws_instance.k3s_server.public_ip                  # Agent들이 SSH 접속할 때 사용
   }
 }
 
