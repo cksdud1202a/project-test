@@ -46,7 +46,7 @@ jobs:
   # -------------------------------------------------------------------
   ansible:
     name: Configure K3s cluster & Deploy App
-    runs-on: [ self-hosted, Linux, X64 ] #본인의 Runners label 확인
+    runs-on: [ self-hosted, Linux, X64 ] #본인 Runners label 확인
     needs: terraform  # Terraform이 성공해야만 실행됨
     env:
       ANSIBLE_HOST_KEY_CHECKING: "False"
@@ -90,7 +90,7 @@ jobs:
           echo "--- Generated Inventory ---"
           cat inventory/hosts.yml
 
-      # 전체 자동 배포 스크립트 실행 (deploy.sh)
+      # 전체 자동 배포 스크립트 실행(deploy.sh)
       - name: Run Deployment Script
         working-directory: k3s-ansible
         run: |
