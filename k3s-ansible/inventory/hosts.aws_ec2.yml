@@ -27,12 +27,17 @@ compose:
   ansible_user: " 'ubuntu' "
   
   # 실제 접속할 IP 주소
-  ansible_host: private_ip_address
+  # Server는 Public IP, Agent는 Private IP로 접속 대상을 구분
+  ansible_host: >-
+    {{ public_ip_address if tags.Role == 'server' else private_ip_address }}
 
   # 🔥 핵심! Agent는 Server 경유, Server는 직접 접속
   # 태그 대신 hostvars를 사용하여 서버의 Public IP를 동적으로 가져옴
   ansible_ssh_common_args: >-
-    {{ "-o ProxyCommand='ssh -W %h:%p -q ubuntu@" + 
-       hostvars[groups['server'][0]].public_ip_address + 
-       " -o StrictHostKeyChecking=no'" 
-       if tags.Role == 'agent' else "" }}
+    {{ "-o ProxyCommand='ssh -W %h:%p -q ubuntu@" +
+    hostvars[groups['server'][0]].public_ip_address +
+    " -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa'"
+    if tags.Role == 'agent' else "" }}
+  # Server(192.168.1.232) → 13.125.xxx.xxx (Public IP로 직접 접속) ✅
+  # Agent(192.168.2.24)   → 192.168.2.24 (Private IP, Server 경유) ✅
+  # Agent(192.168.2.217)  → 192.168.2.217 (Private IP, Server 경유) ✅
