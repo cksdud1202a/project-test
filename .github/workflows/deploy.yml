@@ -2,20 +2,16 @@ name: Provision & Configure K3s
 
 on:
   push:
-    branches: [ "master" ]  # 본인의 메인 브랜치명 확인 (main 또는 master)
-  workflow_dispatch:      # 필요 시 수동 실행 가능
+    branches: [ "master" ]
+  workflow_dispatch:
 
 jobs:
   # -------------------------------------------------------------------
-  # 1) Terraform Job: 인프라 생성 및 IP 추출
+  # 1) Terraform Job: 인프라 생성 (IP 추출 단계 삭제!)
   # -------------------------------------------------------------------
   terraform:
     name: Provision Infrastructure
-    runs-on: [ self-hosted, Linux, X64 ] #본인의 Runners label 확인
-    outputs:
-      # Ansible Job으로 넘겨줄 IP들
-      server_ip: ${{ steps.set_outputs.outputs.server_ip }}
-      agent_ip: ${{ steps.set_outputs.outputs.agent_ip }}
+    runs-on: [ self-hosted, Linux, X64 ]
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -33,67 +29,37 @@ jobs:
         working-directory: terraform
         run: terraform apply -auto-approve
 
-      # outputs.tf에 정의된 이름을 기반으로 값을 추출하여 다음 Job으로 전달
-      - name: Set Outputs for Ansible
-        id: set_outputs
-        working-directory: terraform
-        run: |
-          echo "server_ip=$(terraform output -raw server_public_ip)" >> $GITHUB_OUTPUT
-          echo "agent_ip=$(terraform output -raw agent_private_ip)" >> $GITHUB_OUTPUT
-
-  # -------------------------------------------------------------------
-  # 2) Ansible Job: 클러스터 구성 및 Nginx 배포
-  # -------------------------------------------------------------------
+  # ------------------------------------------------------------------
+  # 2) Ansible Job: 동적 인벤토리를 이용한 클러스터 구성
+  # ------------------------------------------------------------------
   ansible:
     name: Configure K3s cluster & Deploy App
-    runs-on: [ self-hosted, Linux, X64 ] #본인 Runners label 확인
-    needs: terraform  # Terraform이 성공해야만 실행됨
+    runs-on: [ self-hosted, Linux, X64 ]
+    needs: terraform
     env:
+      # 🔥 중요! Ansible이 AWS API를 호출하려면 이 인증정보 필요
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
       ANSIBLE_HOST_KEY_CHECKING: "False"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # SSH 키 설정 (Bastion 내부에서 Private 노드로 접속하기 위함)
+      # 1. SSH 키 설정 (인증용 키 파일만 생성)
       - name: Setup SSH private key
         run: |
           mkdir -p ~/.ssh
-          cat <<EOF > ~/.ssh/id_rsa
-          ${{ secrets.ANSIBLE_PRIVATE_KEY }}
-          EOF
+          echo "${{ secrets.ANSIBLE_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      # 2. SSH config 설정 
-      - name: Setup SSH config
-        run: |
-          cat <<EOF > ~/.ssh/config
-          Host *
-            StrictHostKeyChecking no
-            UserKnownHostsFile /dev/null
-            IdentityFile ~/.ssh/id_rsa
-            ForwardAgent yes
-          EOF
+      # ❌ [삭제됨] Setup SSH config (인벤토리 파일의 compose 설정이 대신함)
+      # ❌ [삭제됨] Generate Inventory from Template (envsubst 로직 필요 없음)
 
-      # 템플릿(hosts.yml.tmpl)을 실제 인벤토리(hosts.yml)로 변환
-      - name: Generate Inventory from Template
-        working-directory: k3s-ansible
-        env:
-          SERVER_IP: ${{ needs.terraform.outputs.server_ip }}
-          AGENT_IP: ${{ needs.terraform.outputs.agent_ip }}
-        run: |
-          export AGENT1_IP=$(echo "$AGENT_IP" | cut -d',' -f1)
-          export AGENT2_IP=$(echo "$AGENT_IP" | cut -d',' -f2)
-          export SERVER_IP="$SERVER_IP"
-          
-          envsubst < inventory/hosts.yml.tmpl > inventory/hosts.yml
-          echo "--- Generated Inventory ---"
-          cat inventory/hosts.yml
-
-      # 전체 자동 배포 스크립트 실행(deploy.sh)
+      # 2. 전체 자동 배포 스크립트 실행
       - name: Run Deployment Script
         working-directory: k3s-ansible
         run: |
-          # 스크립트에 실행 권한을 부여하고 실행합니다.
-          chmod +x deploy.sh #ansible 명령어를 이용해서 site.yml 를 실행하는 방법도 있음.
+          chmod +x deploy.sh
           ./deploy.sh
