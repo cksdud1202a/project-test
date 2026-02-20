@@ -1,5 +1,5 @@
 # AWS EC2 동적 인벤토리 설정 파일
-plugin: aws_ec2
+plugin: amazon.aws.aws_ec2
 
 # 검색할 AWS 리전
 regions:
@@ -24,7 +24,7 @@ hostnames:
 # 🔥 접속 변수 자동 설정 (가장 중요!)
 compose:
   # 모든 노드에 접속할 기본 사용자
-  ansible_user: " 'ubuntu' "
+  ansible_user: ubuntu
   
   # 실제 접속할 IP 주소
   # Server는 Public IP, Agent는 Private IP로 접속 대상을 구분
