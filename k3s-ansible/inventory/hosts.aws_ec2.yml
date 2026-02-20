@@ -37,7 +37,7 @@ compose:
     {{ "-o ProxyCommand='ssh -W %h:%p -q ubuntu@" +
     hostvars[groups['server'][0]].public_ip_address +
     " -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa'"
-    if tags.Role == 'agent' else "" }}
+    if tag_Role == 'agent' else "" }}
   # Server(192.168.1.232) → 13.125.xxx.xxx (Public IP로 직접 접속) ✅
   # Agent(192.168.2.24)   → 192.168.2.24 (Private IP, Server 경유) ✅
   # Agent(192.168.2.217)  → 192.168.2.217 (Private IP, Server 경유) ✅
