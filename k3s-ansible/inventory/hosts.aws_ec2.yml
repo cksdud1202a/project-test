@@ -1,0 +1,38 @@
+# AWS EC2 동적 인벤토리 설정 파일
+plugin: aws_ec2
+
+# 검색할 AWS 리전
+regions:
+  - ap-northeast-2  # 서울 리전
+
+# 🔥 필터: 어떤 인스턴스를 가져올지 지정
+filters:
+  tag:Project: "k3s-project"           # Project 태그가 k3s-project인 것만
+  instance-state-name: [ 'running' ]   # 실행 중인 것만
+
+# 🔥 그룹화: Role 태그 값으로 자동 그룹 분류
+keyed_groups:
+  - key: tags.Role      # Role 태그 값을 보고
+    separator: ""       # 구분자 없이 그룹 이름 만들기
+    # Role=server → servers 그룹
+    # Role=agent → agents 그룹
+
+# 🔥 호스트 이름: Private IP를 호스트 이름으로 사용
+hostnames:
+  - private-ip-address
+
+# 🔥 접속 변수 자동 설정 (가장 중요!)
+compose:
+  # 모든 노드에 접속할 기본 사용자
+  ansible_user: " 'ubuntu' "
+  
+  # 실제 접속할 IP 주소
+  ansible_host: private_ip_address
+
+  # 🔥 핵심! Agent는 Server 경유, Server는 직접 접속
+  ansible_ssh_common_args: >
+    if (tags.Role == 'agent') then
+      "-o ProxyCommand='ssh -W %h:%p -q ubuntu@{{ tags.ServerPublicIP }} -o StrictHostKeyChecking=no'"
+    else
+      ""
+    endif

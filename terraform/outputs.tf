@@ -1,9 +1,8 @@
 output "server_public_ip" {
   description = "외부에서 접속할 K3s Server IP"
-  value       = aws_instance.k3s_server.public_ip
+  value       = aws_instance.kube_controller.public_ip
 }
 
-output "agent_private_ip" {
-  description = "내부에서 확인 가능한 K3s Agent IP 목록"
-  value       = join(",", aws_instance.k3s_agent[*].private_ip)
-}
+# Agent IP 리스트 출력은 삭제!
+# Ansible이 AWS API로 직접 찾을 거니까 필요 없음
+# 참고용으로 남김
