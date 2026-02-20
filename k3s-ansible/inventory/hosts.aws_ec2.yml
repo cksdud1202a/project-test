@@ -29,7 +29,7 @@ compose:
   # 실제 접속할 IP 주소
   # Server는 Public IP, Agent는 Private IP로 접속 대상을 구분
   ansible_host: >-
-    {{ public_ip_address if tags.Role == 'server' else private_ip_address }}
+    {{ public_ip_address if tag.Role == 'server' else private_ip_address }}
 
   # 🔥 핵심! Agent는 Server 경유, Server는 직접 접속
   # 태그 대신 hostvars를 사용하여 서버의 Public IP를 동적으로 가져옴
