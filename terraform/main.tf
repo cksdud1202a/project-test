@@ -40,6 +40,7 @@ resource "aws_instance" "k3s_server" {
   # 🔥 중요! Ansible이 인식할 태그 추가
   tags = {
     Name           = "${var.project_name}-server"   # 보기 좋은 이름
+    Project = "k3s-project"    # Ansible이 이 태그로 서버 찾음!
     Role           = "server"                        # Ansible이 이걸로 그룹 분류!
   }
 }
@@ -79,6 +80,7 @@ resource "aws_instance" "k3s_agent" {
   # 🔥 중요! Ansible이 인식할 태그 추가
   tags = {
     Name    = "${var.project_name}-agent-${count.index + 1}"
+    Project = "k3s-project"    # 프로젝트 식별용
     Role    = "agent"          # Ansible이 이걸로 agents 그룹 분류!
   }
 }
