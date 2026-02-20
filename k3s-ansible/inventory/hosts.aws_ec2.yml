@@ -12,7 +12,7 @@ filters:
 
 # 🔥 그룹화: Role 태그 값으로 자동 그룹 분류
 keyed_groups:
-  - key: tags.Role      # Role 태그 값을 보고
+  - key: tag_Role      # Role 태그 값을 보고
     separator: ""       # 구분자 없이 그룹 이름 만들기
     # Role=server → servers 그룹
     # Role=agent → agents 그룹
