@@ -1,6 +1,6 @@
 ---
 - name: 05. Setup Monitoring (Prometheus & Grafana)
-  hosts: server
+  hosts: servers
   become: true
   tasks:
     - name: Ensure pip packages for K8s modules are installed
