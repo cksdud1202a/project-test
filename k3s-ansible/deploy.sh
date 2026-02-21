@@ -20,10 +20,10 @@ fi
 echo "🔍 AWS API를 통해 서버(Bastion) IP를 조회 중..."
 
 # 인벤토리에서 'server' 그룹의 첫 번째 호스트 이름을 가져옵니다.
-HOST_NAME=$(ANSIBLE_DEBUG=0 ANSIBLE_VERBOSITY=0 ansible-inventory -i $INV --list | jq -r '.server.hosts[0]')
+HOST_NAME=$(ANSIBLE_DEBUG=0 ANSIBLE_VERBOSITY=0 ansible-inventory -i $INV --list | jq -r '.servers.hosts[0]')
 
 # API로부터 'server' 그룹에 속한 첫 번째 호스트의 공인 IP를 직접 가져옵니다.
-SERVER_PUBLIC_IP=$(ANSIBLE_DEBUG=0 ANSIBLE_VERBOSITY=0 ansible-inventory -i $INV --list | jq -r '._meta.hostvars[.server.hosts[0]].public_ip_address')
+SERVER_PUBLIC_IP=$(ANSIBLE_DEBUG=0 ANSIBLE_VERBOSITY=0 ansible-inventory -i $INV --list | jq -r '._meta.hostvars[.servers.hosts[0]].public_ip_address')
 if [ "$SERVER_PUBLIC_IP" == "null" ] || [ -z "$SERVER_PUBLIC_IP" ]; then
     echo "❌ API에서 서버 IP를 찾지 못했습니다. EC2가 'running' 상태인지 확인하세요."
     exit 1
@@ -66,7 +66,7 @@ echo "    scp ubuntu@$SERVER_PUBLIC_IP:~/.kube/config ~/.kube/config"
 echo ""
 echo "🔍 클러스터 상태 최종 확인 중..."
 # 인벤토리에 정의된 'server' 그룹(그룹명 확인 필요)을 타겟팅합니다.
-ansible server -i $INV -m shell -a "kubectl get nodes -o wide"
+ansible servers -i $INV -m shell -a "kubectl get nodes -o wide"
 
 echo ""
 echo "✅ 클러스터 준비 완료!"
