@@ -28,6 +28,8 @@
     chart_ref: "prometheus-community/kube-prometheus-stack"
     chart_version: "{{ prometheus_chart_version }}"
     release_namespace: "{{ monitoring_namespace }}"
+    # K3s 전용 설정 파일 경로 지정
+    kubeconfig: "/etc/rancher/k3s/k3s.yaml"
     # [1순위] ../ 대신 role_path를 사용하여 내부 파일을 찾습니다.
     values_files:
       - "{{ role_path }}/files/custom-values.yaml"
