@@ -1,5 +1,4 @@
----
-# 1. Helm 바이너리 설치
+# 1. Helm 바이너리 설치 (이미 sudo 권한이 필요할 수 있으나, 보통 스크립트 내부에서 처리됨)
 - name: Install Helm via script
   shell: |
     curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
@@ -7,12 +6,14 @@
     ./get_helm.sh
   args:
     creates: /usr/local/bin/helm
+  become: true # /usr/local/bin에 파일을 써야 하므로 권한 필요
 
 # 2. Prometheus 커뮤니티 Helm 레포지토리 추가
 - name: Add Prometheus community repo
   kubernetes.core.helm_repository:
     name: prometheus-community
     repo_url: "https://prometheus-community.github.io/helm-charts"
+  become: true # Helm 설정 및 k3s.yaml 접근을 위해 추가
 
 # 3. 모니터링 네임스페이스 생성
 - name: Create monitoring namespace
@@ -20,6 +21,8 @@
     name: "{{ monitoring_namespace }}"
     kind: Namespace
     state: present
+    kubeconfig: "/etc/rancher/k3s/k3s.yaml" # 경로 명시 권장
+  become: true # k3s.yaml을 읽기 위해 반드시 필요
 
 # 4. 통합 배포 (외부 파일 로드 + 실시간 IP 주입)
 - name: Deploy kube-prometheus-stack
@@ -28,13 +31,10 @@
     chart_ref: "prometheus-community/kube-prometheus-stack"
     chart_version: "{{ prometheus_chart_version }}"
     release_namespace: "{{ monitoring_namespace }}"
-    # K3s 전용 설정 파일 경로 지정
     kubeconfig: "/etc/rancher/k3s/k3s.yaml"
-    # [1순위] ../ 대신 role_path를 사용하여 내부 파일을 찾습니다.
+    binary_path: /usr/local/bin/helm
     values_files:
       - "{{ role_path }}/files/custom-values.yaml"
-    # [2순위] ansible_host 처럼 실시간으로 변하는 값만 여기서 직접 주입합니다.
-    # 여기서 설정한 값이 외부 파일의 값을 덮어쓰므로 가장 정확합니다.
     values:
       grafana:
         service:
@@ -44,3 +44,4 @@
           server:
             root_url: "http://{{ ansible_host }}:32000"
     wait: true
+  become: true # k3s.yaml 파일 읽기 권한 획득
