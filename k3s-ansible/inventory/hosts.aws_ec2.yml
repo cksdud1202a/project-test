@@ -22,8 +22,8 @@ compose:
   ansible_user: "'ubuntu'"
 
   # 서버는 Public IP로, 에이전트는 Private IP로 접속 시도
-  ansible_host: public_ip_address if (tags.Role == 'server') else private_ip_address
+  ansible_host: public_ip_address if (tags.Role == 'servers') else private_ip_address
 
   ansible_ssh_common_args: >
     "-o ProxyCommand='ssh -W %h:%p -q ubuntu@" + tags.ServerPublicIP + " -o StrictHostKeyChecking=no' -o ForwardAgent=yes" 
-    if (tags.Role == 'agent') else "''"
+    if (tags.Role == 'agents') else "''"
