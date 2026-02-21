@@ -1,6 +1,6 @@
 ---
 - name: Setup K3s Server
-  hosts: server
+  hosts: servers
   become: true
   gather_facts: true
   roles:
