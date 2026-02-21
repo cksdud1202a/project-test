@@ -30,7 +30,7 @@
     release_namespace: "{{ monitoring_namespace }}"
     # [1순위] ../ 대신 role_path를 사용하여 내부 파일을 찾습니다.
     values_files:
-      - "{{ role_path }}/files/custom-values.yaml
+      - "{{ role_path }}/files/custom-values.yaml"
     # [2순위] ansible_host 처럼 실시간으로 변하는 값만 여기서 직접 주입합니다.
     # 여기서 설정한 값이 외부 파일의 값을 덮어쓰므로 가장 정확합니다.
     values:
