@@ -3,7 +3,7 @@ data "aws_ami" "ubuntu" {
   most_recent = true
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-*-*-amd64-server-*"]
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"]
   }
   owners = ["099720109477"]
 }
@@ -40,7 +40,7 @@ resource "aws_instance" "k3s_server" {
   tags = {
     Name           = "${var.project_name}-server"
     Project        = "k3s-project"    # 전체 프로젝트 식별자
-    Role           = "server"         # 서버 그룹 분류용
+    Role           = "servers"         # 서버 그룹 분류용
   }
 }
 
@@ -78,7 +78,7 @@ resource "aws_instance" "k3s_agent" {
   tags = {
     Name    = "${var.project_name}-agent-${count.index + 1}"
     Project = "k3s-project"    # 전체 프로젝트 식별자
-    Role    = "agent"          # 에이전트 그룹 분류용
+    Role    = "agents"          # 에이전트 그룹 분류용
     ServerPublicIP = aws_instance.k3s_server.public_ip
   }
 }
