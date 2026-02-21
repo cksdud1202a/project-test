@@ -1,6 +1,6 @@
 ---
 - name: Prepare all nodes for K3s
-  hosts: server,agent # 인벤토리에서 변경한 그룹명을 사용합니다.
+  hosts: servers,agents # 인벤토리에서 변경한 그룹명을 사용합니다.
   become: true
   gather_facts: true
   
