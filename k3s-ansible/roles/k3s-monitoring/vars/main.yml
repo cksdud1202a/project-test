@@ -1,0 +1,3 @@
+---
+monitoring_namespace: "monitoring"
+prometheus_chart_version: "67.1.0"
