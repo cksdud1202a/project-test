@@ -1,21 +1,4 @@
 ---
-# 0. ARM 변경으로 인한 pip 추가 설
-- name: Install pip3 and kubernetes python library for ARM
-  become: yes
-  block:
-    - name: Install python3-pip using apt
-      apt:
-        name: python3-pip
-        state: present
-        update_cache: yes
-
-    - name: Install required python packages
-      pip:
-        name:
-          - kubernetes
-          - PyYAML
-        executable: pip3
-
 # 1. Helm 바이너리 설치
 - name: Install Helm via script
   shell: |
