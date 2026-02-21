@@ -1,19 +1,20 @@
-# 1. Helm 바이너리 설치 (이미 sudo 권한이 필요할 수 있으나, 보통 스크립트 내부에서 처리됨)
+---
+# 1. Helm 바이너리 설치
 - name: Install Helm via script
-  shell: |
+  ansible.builtin.shell: |
     curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
     chmod 700 get_helm.sh
     ./get_helm.sh
   args:
     creates: /usr/local/bin/helm
-  become: true # /usr/local/bin에 파일을 써야 하므로 권한 필요
+  become: true # /usr/local/bin에 설치하기 위해 root 권한 필요
 
 # 2. Prometheus 커뮤니티 Helm 레포지토리 추가
 - name: Add Prometheus community repo
   kubernetes.core.helm_repository:
     name: prometheus-community
     repo_url: "https://prometheus-community.github.io/helm-charts"
-  become: true # Helm 설정 및 k3s.yaml 접근을 위해 추가
+  become: true # k3s.yaml 접근 및 helm 설정을 위해 필요
 
 # 3. 모니터링 네임스페이스 생성
 - name: Create monitoring namespace
@@ -21,10 +22,10 @@
     name: "{{ monitoring_namespace }}"
     kind: Namespace
     state: present
-    kubeconfig: "/etc/rancher/k3s/k3s.yaml" # 경로 명시 권장
-  become: true # k3s.yaml을 읽기 위해 반드시 필요
+    kubeconfig: "/etc/rancher/k3s/k3s.yaml"
+  become: true # k3s.yaml 파일을 읽기 위해 필요
 
-# 4. 통합 배포 (외부 파일 로드 + 실시간 IP 주입)
+# 4. 통합 배포 (lookup을 사용하여 파일 내용 직접 주입)
 - name: Deploy kube-prometheus-stack
   kubernetes.core.helm:
     name: "prometheus-stack"
@@ -33,9 +34,15 @@
     release_namespace: "{{ monitoring_namespace }}"
     kubeconfig: "/etc/rancher/k3s/k3s.yaml"
     binary_path: /usr/local/bin/helm
-    values_files:
-      - "{{ role_path }}/files/custom-values.yaml"
-    values:
+    # [수정 포인트] 
+    # 1. lookup('file', ...)을 사용하여 러너(Local)에 있는 파일을 읽습니다.
+    # 2. combine()을 사용하여 파일 내용과 아래의 동적 values(Grafana IP 등)를 합칩니다.
+    values: "{{ lookup('file', role_path + '/files/custom-values.yaml') | from_yaml | combine(dynamic_values) }}"
+    wait: true
+  become: true # k3s.yaml 읽기 및 Helm 실행 권한 획득
+  vars:
+    # 실시간으로 변하는 값들을 정의 (values 항목에서 파일 내용과 합쳐짐)
+    dynamic_values:
       grafana:
         service:
           type: NodePort
@@ -43,5 +50,3 @@
         grafana.ini:
           server:
             root_url: "http://{{ ansible_host }}:32000"
-    wait: true
-  become: true # k3s.yaml 파일 읽기 권한 획득
