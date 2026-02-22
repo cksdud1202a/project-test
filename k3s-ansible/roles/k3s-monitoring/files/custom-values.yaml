@@ -1,0 +1,21 @@
+# 1. Prometheus 관련 설정 (통합 차트이므로 prometheus: 아래에 넣어야 함)
+prometheus:
+  prometheusSpec:
+    retention: 10d
+    storageSpec:
+      disableMountSubPath: true
+
+# 2. Grafana 관련 설정 (grafana: 아래에 묶어줘야 인식됨)
+grafana:
+  enabled: true
+  adminUser: "admin"
+  adminPassword: "admin"
+  
+  service:
+    type: NodePort # K3s 환경에서 외부 접속을 위해 가장 확실한 방법
+    nodePort: 32000
+
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClassName: "local-path"
