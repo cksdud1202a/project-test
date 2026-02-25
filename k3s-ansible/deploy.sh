@@ -32,16 +32,17 @@ fi
 echo "📍 확인된 징검다리 서버 IP: $SERVER_PUBLIC_IP"
 
 # [가장 중요] 사설망 에이전트 접속을 위한 징검다리(Proxy) 환경변수 설정
-export ANSIBLE_SSH_COMMON_ARGS="-o ProxyCommand=\"ssh -W %h:%p -q ubuntu@$SERVER_PUBLIC_IP -o StrictHostKeyChecking=no\""
+PRIVATE_KEY_PATH="$HOME/.ssh/id_rsa"
+export ANSIBLE_SSH_COMMON_ARGS="-o ProxyCommand=\"ssh -W %h:%p -q ubuntu@$SERVER_PUBLIC_IP -o StrictHostKeyChecking=no -i $PRIVATE_KEY_PATH -o IdentitiesOnly=yes\""
 # ---------------------------------------------------------
 
 # 3. 모든 노드 연결 테스트
 echo "🔍 AWS EC2 인스턴스 연결 점검 중 (Proxy 적용)..."
-ansible all -i $INV -m ping
+ansible all -i $INV --private-key "$PRIVATE_KEY_PATH" -m ping
 
 # 4. 전체 플레이북 실행
 echo "📦 K3s 전체 설치 프로세스 가동 (site.yml)..."
-ansible-playbook -i $INV site.yml -vvvv
+ansible-playbook -i $INV --private-key "$PRIVATE_KEY_PATH" site.yml -vvvv
 
 echo ""
 echo "✅ K3s 클러스터 배포가 성공적으로 완료되었습니다!"
