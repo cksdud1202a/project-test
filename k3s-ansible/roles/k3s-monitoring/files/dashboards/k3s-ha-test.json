@@ -1,0 +1,8 @@
+{
+  "__inputs": [],
+  "title": "K3s HA Test Dashboard",
+  "panels": [],
+  "schemaVersion": 39,
+  "uid": "k3s-ha-test",
+  "version": 1
+}
