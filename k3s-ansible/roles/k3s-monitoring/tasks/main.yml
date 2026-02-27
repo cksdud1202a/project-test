@@ -44,15 +44,6 @@
     # 실시간으로 변하는 값들을 정의 (values 항목에서 파일 내용과 합쳐짐)
     dynamic_values:
       grafana:
-        service:
-          type: NodePort
-          nodePort: 32000
         grafana.ini:
           server:
             root_url: "http://{{ ansible_host }}:32000"
-        # ✅ 여기서부터 대시보드 설정 추가
-        dashboards:
-          default:
-            # 1) 315 Kubernetes cluster monitoring (via Prometheus)
-            k8s-cluster-315:
-              json: "{{ lookup('file', role_path + '/files/dashboards/315_rev3.json') }}"
