@@ -19,8 +19,21 @@
           labels:
             app: nginx
         spec:
-          nodeSelector:
-            node-role.kubernetes.io/worker: worker
+          affinity:
+            # [추가] control-plane 라벨이 없는 노드(Agent)에만 배포
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+            # [추가] 같은 노드에 Nginx Pod이 2개 이상 뜨지 못하게 강제 분산
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchLabels:
+                    app: nginx
+                topologyKey: "kubernetes.io/hostname"
           containers:
           - name: nginx
             image: nginx:latest
