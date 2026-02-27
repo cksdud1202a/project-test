@@ -19,13 +19,14 @@
           labels:
             app: nginx
         spec:
+          nodeSelector:
+            node-role.kubernetes.io/worker: worker
           containers:
           - name: nginx
             image: nginx:latest
             ports:
             - containerPort: 80
     EOF
-  
   delegate_to: "{{ groups['servers'][0] }}"
 
 # 2. Nginx 서비스 (NodePort 설정)
