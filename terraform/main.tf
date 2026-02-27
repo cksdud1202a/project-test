@@ -16,8 +16,6 @@ resource "aws_instance" "k3s_server" {
   key_name               = var.key_name
   vpc_security_group_ids = [aws_security_group.server_sg.id]
   
-  # [중요] 타 노드의 트래픽을 전달하기 위해 원본/대상 확인 해제 (NAT 역할 수행용)
-  #AWS 인스턴스가 자신을 목적지로 하지 않는 트래픽도 전달할 수 있게 허용하는 설정
   source_dest_check      = false
 
   user_data = <<-EOF
@@ -36,11 +34,10 @@ resource "aws_instance" "k3s_server" {
                 --write-kubeconfig-mode 644
               EOF
 
-  # 중요: Ansible Dynamic Inventory가 인식할 태그
   tags = {
     Name           = "${var.project_name}-server"
-    Project        = "k3s-project"    # 전체 프로젝트 식별자
-    Role           = "servers"         # 서버 그룹 분류용
+    Project        = "k3s-project"
+    Role           = "servers"
   }
 }
 
@@ -53,7 +50,6 @@ resource "aws_instance" "k3s_agent" {
   key_name               = var.key_name
   vpc_security_group_ids = [aws_security_group.agent_sg.id]
 
-  # Server가 먼저 설치되어야 Agent가 참여할 수 있음
   depends_on = [aws_instance.k3s_server]
 
   user_data = <<-EOF
@@ -62,9 +58,9 @@ resource "aws_instance" "k3s_agent" {
               fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
               echo '/swapfile none swap sw 0 0' >> /etc/fstab
 
-              # 2. 라우팅 테이블 수정 (인터넷 기본 통로를 Server 서버로 변경)
+              # 2. 라우팅 테이블 수정
               SERVER_IP="${aws_instance.k3s_server.private_ip}"
-              ip route add 192.168.1.0/24 dev eth0 # Server와 내부 통신 유지
+              ip route add 192.168.1.0/24 dev eth0
               ip route replace default via $SERVER_IP dev eth0
 
               # 3. K3s Agent 설치 (Server가 준비될 때까지 재시도)
@@ -74,11 +70,64 @@ resource "aws_instance" "k3s_agent" {
               done
               EOF
 
-  # 중요: Ansible Dynamic Inventory가 인식할 태그
   tags = {
-    Name    = "${var.project_name}-agent-${count.index + 1}"
-    Project = "k3s-project"    # 전체 프로젝트 식별자
-    Role    = "agents"          # 에이전트 그룹 분류용
+    Name           = "${var.project_name}-agent-${count.index + 1}"
+    Project        = "k3s-project"
+    Role           = "agents"
     ServerPublicIP = aws_instance.k3s_server.public_ip
   }
+}
+
+# ===============================
+# Network Load Balancer
+# ===============================
+resource "aws_lb" "k3s_nlb" {
+  name               = "k3s-nlb"
+  load_balancer_type = "network"
+  internal           = false
+  subnets            = [aws_subnet.public.id]
+
+  tags = {
+    Name = "k3s-nlb"
+  }
+}
+
+# ===============================
+# Target Group (NodePort 30080)
+# ===============================
+resource "aws_lb_target_group" "nginx_tg" {
+  name        = "k3s-nginx-tg"
+  port        = 30080
+  protocol    = "TCP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "instance"
+
+  health_check {
+    protocol = "TCP"
+    port     = "30080"
+  }
+}
+
+# ===============================
+# Listener (외부 80 → 내부 30080)
+# ===============================
+resource "aws_lb_listener" "nginx_listener" {
+  load_balancer_arn = aws_lb.k3s_nlb.arn
+  port              = 80
+  protocol          = "TCP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.nginx_tg.arn
+  }
+}
+
+# ===============================
+# Attach Server Node Only
+# Server의 kube-proxy가 Agent의 Nginx Pod으로 라우팅해줌
+# ===============================
+resource "aws_lb_target_group_attachment" "server" {
+  target_group_arn = aws_lb_target_group.nginx_tg.arn
+  target_id        = aws_instance.k3s_server.id
+  port             = 30080
 }
