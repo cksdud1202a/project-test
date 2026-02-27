@@ -87,6 +87,8 @@ resource "aws_lb" "k3s_nlb" {
   internal           = false
   subnets            = [aws_subnet.public.id]
 
+  enable_cross_zone_load_balancing = true  # 추가
+
   tags = {
     Name = "k3s-nlb"
   }

@@ -75,10 +75,6 @@ echo "🔗 Nginx 접속 주소:"
 #사용자 → Server EC2 직접 접속 → kube-proxy → Nginx Pod
 #Server IP로 직접 접속하는 거라 Server가 죽으면 접속 불가
 echo "    http://$SERVER_PUBLIC_IP:30080"
-#사용자 → NLB → Server:30080 → kube-proxy → Nginx Pod
-#NLB를 통해 접속하는 거라 이중화/고가용성 적용된 진짜 운영용 주소
-echo "    http://$(aws elbv2 describe-load-balancers --names k3s-nlb --query 'LoadBalancers[0].DNSName' --output text)"
-echo "    GitHub Actions 로그에서 보안상 리전 정보를 가리기 때문에 ***를 ap-northeast-2로 바꿔줘야 접속이 가능하다."
 
 echo ""
 echo "✅ 클러스터 준비 완료!"
