@@ -58,9 +58,6 @@ resource "aws_instance" "k3s_agent" {
               fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
               echo '/swapfile none swap sw 0 0' >> /etc/fstab
 
-              # [변경] ip route 수정 제거
-              # Private Route Table에서 이미 Server ENI를 NAT로 설정했으므로
-              # OS 레벨에서 라우팅 수정하면 비대칭 라우팅 문제 발생
               SERVER_IP="${aws_instance.k3s_server.private_ip}"
 
               # 2. K3s Agent 설치 (Server가 준비될 때까지 재시도)
@@ -79,15 +76,33 @@ resource "aws_instance" "k3s_agent" {
 }
 
 # ===============================
+# [추가] Agent AZ(2b)용 Public Subnet
+# NLB가 Agent와 같은 AZ에 ENI를 가지기 위해 필요
+# ===============================
+resource "aws_subnet" "public_2b" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "192.168.3.0/24"
+  availability_zone       = "ap-northeast-2b"
+  map_public_ip_on_launch = true
+  tags = { Name = "${var.project_name}-public-subnet-2b" }
+}
+
+resource "aws_route_table_association" "public_2b_assoc" {
+  subnet_id      = aws_subnet.public_2b.id
+  route_table_id = aws_route_table.public_rt.id
+}
+
+# ===============================
 # Network Load Balancer
 # ===============================
 resource "aws_lb" "k3s_nlb" {
   name               = "k3s-nlb"
   load_balancer_type = "network"
   internal           = false
-  subnets            = [aws_subnet.public.id]
+  # [변경] 2b Public Subnet 추가 → NLB가 Agent AZ에 ENI 생성
+  subnets            = [aws_subnet.public.id, aws_subnet.public_2b.id]
 
-  enable_cross_zone_load_balancing = true  # 추가
+  enable_cross_zone_load_balancing = true
 
   tags = {
     Name = "k3s-nlb"
@@ -125,9 +140,7 @@ resource "aws_lb_listener" "nginx_listener" {
 }
 
 # ===============================
-# [변경] Server attachment 제거
 # Agent만 Target Group에 등록
-# NLB → Agent 직접 연결 (VPC 내부 통신으로 Private Subnet도 가능)
 # ===============================
 resource "aws_lb_target_group_attachment" "agents" {
   count            = length(aws_instance.k3s_agent)
