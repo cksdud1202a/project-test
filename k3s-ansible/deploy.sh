@@ -70,6 +70,12 @@ echo ""
 echo "🌐 Nginx 배포 상태 확인 중..."
 ansible servers -i $INV -m shell -a "kubectl get pods -l app=nginx -o wide"
 
+echo "📊 모니터링 대시보드 접속 (Grafana)"
+echo "    URL: http://$SERVER_PUBLIC_IP:32000"
+echo "    ID:  admin"
+echo "    PW:  admin"  # all.yml에서 수정한 경우 해당 값을 입력하세요.
+echo "----------------------------------------------------------------"
+
 echo ""
 echo "🔗 Nginx 접속 주소:"
 #사용자 → Server EC2 직접 접속 → kube-proxy → Nginx Pod
