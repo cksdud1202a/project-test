@@ -37,7 +37,7 @@
     # [수정 포인트] 
     # 1. lookup('file', ...)을 사용하여 러너(Local)에 있는 파일을 읽습니다.
     # 2. combine()을 사용하여 파일 내용과 아래의 동적 values(Grafana IP 등)를 합칩니다.
-    values: "{{ lookup('file', role_path + '/files/custom-values.yaml') | from_yaml | combine(dynamic_values) }}"
+    values: "{{ lookup('file', role_path + '/files/custom-values.yaml') | from_yaml | combine(dynamic_values, recursive=True) }}"
     wait: true
   become: true # k3s.yaml 읽기 및 Helm 실행 권한 획득
   vars:
@@ -50,14 +50,12 @@
         grafana.ini:
           server:
             root_url: "http://{{ ansible_host }}:32000"
-            
-         # ✅ 여기서부터 대시보드 설정 추가
+        # ✅ 여기서부터 대시보드 설정 추가
         dashboards:
           default:
             # 1) 315 Kubernetes cluster monitoring (via Prometheus)
             k8s-cluster-315:
               json: "{{ lookup('file', role_path + '/files/dashboards/315_rev3.json') }}"
-
             # 2) HA 테스트용 커스텀 대시보드
             k3s-ha-test:
               json: "{{ lookup('file', role_path + '/files/dashboards/k3s-ha-test.json') }}"
