@@ -16,16 +16,17 @@ resource "aws_security_group" "server_sg" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  
-  ingress { 
-	  from_port   = 30080
-	  to_port     = 30080
-	  protocol    = "tcp"
-	  cidr_blocks = ["0.0.0.0/0"] 
-	  description = "Allow Nginx NodePort on Server Node"
-	}
 
-# --- 추가할 부분: Grafana 접속 허용 ---
+  # [변경] Server는 NLB Target에서 제외됐으므로 30080 외부 허용 제거
+  # Server NodePort는 내부 통신용으로만 사용
+  ingress { 
+    from_port   = 30080
+    to_port     = 30080
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+    description = "Allow Nginx NodePort internal only"
+  }
+
   ingress { 
     from_port   = 32000
     to_port     = 32000
@@ -41,7 +42,7 @@ resource "aws_security_group" "server_sg" {
     cidr_blocks = [aws_subnet.private.cidr_block]
   }
 
-  egress { # 모든 외부 출력 허용
+  egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -60,17 +61,18 @@ resource "aws_security_group" "agent_sg" {
     protocol    = "-1"
     cidr_blocks = [aws_subnet.public.cidr_block]
   }
-  
-  # --- 추가된 부분: Nginx NodePort 접속 허용 ---
+
+  # [변경] 0.0.0.0/0 → VPC CIDR로 변경
+  # NLB는 VPC 내부 통신으로 Agent에 접근하므로 VPC CIDR만 허용하면 됨
   ingress { 
-    from_port   = 30080 #쿠버네티스(K3s)에서 외부로 서비스를 노출할 때 사용하는 NodePort의 기본 범위(30000~32767)에 속하는 포트
+    from_port   = 30080
     to_port     = 30080
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] 
-    description = "Allow Nginx NodePort Access"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+    description = "Allow NLB to Agent NodePort"
   }
 
-  egress { # 모든 외부 출력 허용 (Server를 통해 나감)
+  egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -78,9 +80,7 @@ resource "aws_security_group" "agent_sg" {
   }
 }
 
-# [핵심] 노드 간 상호 통신 규칙 (SG Peering)
-#보안 그룹끼리 서로 허용: 반드시 aws_security_group_rule로 분리해서 작성해야 함
-# Server는 Agent 보안 그룹을 가진 노드의 모든 포트 접속을 허용합니다.
+# 노드 간 상호 통신 규칙 (SG Peering)
 resource "aws_security_group_rule" "allow_agent_to_server" {
   type                     = "ingress"
   from_port                = 0
@@ -90,7 +90,6 @@ resource "aws_security_group_rule" "allow_agent_to_server" {
   source_security_group_id = aws_security_group.agent_sg.id
 }
 
-# Agent는 Server 보안 그룹을 가진 노드의 모든 포트 접속을 허용합니다.
 resource "aws_security_group_rule" "allow_server_to_agent" {
   type                     = "ingress"
   from_port                = 0
