@@ -19,3 +19,18 @@ grafana:
     enabled: true
     size: 10Gi
     storageClassName: "local-path"
+    
+    # 대시보드 프로바이더: Grafana가 어떤 경로에서 JSON을 읽을지
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'default'               # 아래 dashboards.default 와 연결
+          orgId: 1
+          folder: 'K3s Cluster'         # Grafana UI에서 보이는 폴더 이름
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/default
+            # kube-prometheus-stack가 알아서 이 경로에 ConfigMap/파일 마운트해줌
