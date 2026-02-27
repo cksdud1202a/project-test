@@ -4,3 +4,8 @@ output "server_public_ip" {
 }
 
 #Agent IP 리스트 출력은 삭제
+
+output "nlb_dns" {
+  description = "Nginx 접속용 NLB DNS 주소"
+  value       = aws_lb.k3s_nlb.dns_name
+}
