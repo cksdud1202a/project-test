@@ -54,6 +54,7 @@
          # ✅ 여기서부터 대시보드 설정 추가
         dashboards:
           default:
-            # 1) 315 Kubernetes cluster monitoring (via Prometheus)
             k3s-cluster-19972:
-              json: "{{ lookup('file', role_path + '/files/dashboards/19972_rev1.json') }}"
+              gnetId: 19972
+              revision: 1
+              datasource: Prometheus
