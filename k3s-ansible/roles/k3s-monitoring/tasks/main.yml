@@ -50,11 +50,3 @@
         grafana.ini:
           server:
             root_url: "http://{{ ansible_host }}:32000"
-            
-         # ✅ 여기서부터 대시보드 설정 추가
-        dashboards:
-          default:
-            k3s-cluster-19972:
-              gnetId: 19972
-              revision: 1
-              datasource: Prometheus
