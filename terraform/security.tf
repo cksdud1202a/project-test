@@ -101,6 +101,7 @@ resource "aws_security_group_rule" "allow_server_to_agent" {
 }
 
 # Agent끼리 상호 통신 허용
+# 상호 통신이 안돼서 agent1에 설치된 그라파나가 agent2의 CoreDNS를 못찾는 문제 해결
 resource "aws_security_group_rule" "allow_agent_to_agent" {
   type                     = "ingress"
   from_port                = 0

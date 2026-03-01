@@ -1,6 +1,7 @@
 prometheus:
   prometheusSpec:
     retention: 10d
+    # 스토리지 용량 부여하고 Prometheus Pod 생성 오류
     storageSpec:
       volumeClaimTemplate:
         spec:
