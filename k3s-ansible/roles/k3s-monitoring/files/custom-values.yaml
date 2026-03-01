@@ -43,4 +43,6 @@ grafana:
       k3s-cluster-19972:
         gnetId: 19972
         revision: 1
-        datasource: Prometheus
+        datasource:
+          - name: DS_PROMETHEUS
+            value: Prometheus
