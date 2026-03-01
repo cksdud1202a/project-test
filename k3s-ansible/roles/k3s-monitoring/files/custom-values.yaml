@@ -19,8 +19,8 @@ grafana:
     enabled: true
     size: 10Gi
     storageClassName: "local-path"
-
-  # 대시보드 프로바이더: Grafana가 어떤 경로에서 JSON을 읽을지
+    
+    # 대시보드 프로바이더: Grafana가 어떤 경로에서 JSON을 읽을지
   dashboardProviders:
     dashboardproviders.yaml:
       apiVersion: 1
@@ -34,11 +34,3 @@ grafana:
           options:
             path: /var/lib/grafana/dashboards/default
             # kube-prometheus-stack가 알아서 이 경로에 ConfigMap/파일 마운트해줌
-
-  # gnetId로 grafana.com에서 직접 다운로드
-  dashboards:
-    default:
-      k8s-cluster-315:
-        gnetId: 315
-        revision: 3
-        datasource: Prometheus
