@@ -1,7 +1,5 @@
 ---
-# =========================================================
 # 1. Helm 바이너리 설치
-# =========================================================
 - name: Install Helm via script
   ansible.builtin.shell: |
     curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
@@ -9,50 +7,25 @@
     ./get_helm.sh
   args:
     creates: /usr/local/bin/helm
-  become: true   # /usr/local/bin 설치 권한 필요
+  become: true # /usr/local/bin에 설치하기 위해 root 권한 필요
 
-
-# =========================================================
-# 2. Prometheus community Helm repo 추가
-# =========================================================
+# 2. Prometheus 커뮤니티 Helm 레포지토리 추가
 - name: Add Prometheus community repo
   kubernetes.core.helm_repository:
     name: prometheus-community
     repo_url: "https://prometheus-community.github.io/helm-charts"
-  become: true
+  become: true # k3s.yaml 접근 및 helm 설정을 위해 필요
 
-
-# =========================================================
-# ✅ FIX: Helm orphan release 방지 (가장 중요)
-# 이전 설치 흔적 때문에 context deadline 발생하는 문제 해결
-# CI/CD 재실행 시 항상 깨끗한 상태 보장
-# =========================================================
-- name: Cleanup old monitoring namespace (prevent helm corruption)
-  ansible.builtin.shell: |
-    kubectl delete namespace monitoring --ignore-not-found=true
-  become: true
-  ignore_errors: true
-
-  # ✅ FIX: namespace 완전 삭제 대기
-- name: Wait namespace deletion
-  ansible.builtin.shell: sleep 5
-
-
-# =========================================================
-# 3. monitoring 네임스페이스 생성
-# =========================================================
+# 3. 모니터링 네임스페이스 생성
 - name: Create monitoring namespace
   kubernetes.core.k8s:
     name: "{{ monitoring_namespace }}"
     kind: Namespace
     state: present
     kubeconfig: "/etc/rancher/k3s/k3s.yaml"
-  become: true
+  become: true # k3s.yaml 파일을 읽기 위해 필요
 
-
-# =========================================================
-# 4. kube-prometheus-stack 배포
-# =========================================================
+# 4. 통합 배포 (lookup을 사용하여 파일 내용 직접 주입)
 - name: Deploy kube-prometheus-stack
   kubernetes.core.helm:
     name: "prometheus-stack"
@@ -61,40 +34,20 @@
     release_namespace: "{{ monitoring_namespace }}"
     kubeconfig: "/etc/rancher/k3s/k3s.yaml"
     binary_path: /usr/local/bin/helm
-
-    # -----------------------------------------------------
-    # custom-values.yaml + 동적 값 merge
-    # -----------------------------------------------------
-    values: "{{ lookup('file', role_path + '/files/custom-values.yaml')
-               | from_yaml
-               | combine(dynamic_values, recursive=True) }}"
-
-    # ✅ FIX 1: wait 제거 (CI 멈춤 원인)
-    # kube-prometheus-stack는 생성 5~10분 걸림
-    wait: false
-
-    # ✅ FIX 2: Helm timeout 단위 명시
-    timeout: 900s
-
-    # ✅ FIX 3: 실패 시 rollback 방지 (디버깅 가능)
-    atomic: false
-
-    # namespace는 위에서 이미 생성
-    create_namespace: false
-
-  become: true
-
+    # [수정 포인트] 
+    # 1. lookup('file', ...)을 사용하여 러너(Local)에 있는 파일을 읽습니다.
+    # 2. combine()을 사용하여 파일 내용과 아래의 동적 values(Grafana IP 등)를 합칩니다.
+    # admin 문제 recursive로 해결
+    values: "{{ lookup('file', role_path + '/files/custom-values.yaml') | from_yaml | combine(dynamic_values, recursive=True) }}"
+    wait: true
+  become: true # k3s.yaml 읽기 및 Helm 실행 권한 획득
   vars:
-    # -----------------------------------------------------
-    # 실행 시 동적으로 변하는 값
-    # -----------------------------------------------------
+    # 실시간으로 변하는 값들을 정의 (values 항목에서 파일 내용과 합쳐짐)
     dynamic_values:
       grafana:
         service:
           type: NodePort
           nodePort: 32000
-
         grafana.ini:
           server:
-            # ✅ FIX: Grafana 외부 접속 URL 자동 설정
             root_url: "http://{{ ansible_host }}:32000"

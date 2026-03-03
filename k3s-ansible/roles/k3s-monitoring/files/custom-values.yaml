@@ -1,9 +1,7 @@
-# ==============================
-# Prometheus 기본 설정
-# ==============================
 prometheus:
   prometheusSpec:
     retention: 10d
+    # 스토리지 용량 부여하고 Prometheus Pod 생성 오류
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -13,14 +11,11 @@ prometheus:
             requests:
               storage: 10Gi
 
-# ==============================
-# Grafana 설정
-# ==============================
 grafana:
   enabled: true
   adminUser: "admin"
   adminPassword: "admin"
-
+  
   service:
     type: NodePort
     nodePort: 32000
@@ -30,25 +25,13 @@ grafana:
     size: 10Gi
     storageClassName: "local-path"
 
-  # ✅ Grafana datasource 자동 생성 (N/A 해결 핵심)
-  datasources:
-    datasources.yaml:
-      apiVersion: 1
-      datasources:
-        - name: Prometheus
-          type: prometheus
-          access: proxy
-          url: http://prometheus-operated.monitoring.svc.cluster.local:9090
-          isDefault: true
-          editable: true
-
   dashboardProviders:
     dashboardproviders.yaml:
       apiVersion: 1
       providers:
-        - name: default
+        - name: 'default'
           orgId: 1
-          folder: "K3s Cluster"
+          folder: 'K3s Cluster'
           type: file
           disableDeletion: false
           editable: true
@@ -61,25 +44,5 @@ grafana:
         gnetId: 19972
         revision: 1
         datasource:
-          - name: Prometheus
+          - name: DS_PROMETHEUS
             value: Prometheus
-
-# ==============================
-# node-exporter
-# ==============================
-prometheus-node-exporter:
-  hostRootFsMount:
-    enabled: true
-
-# ==============================
-# kubelet (cgroup v2 대응)
-# ==============================
-kubelet:
-  serviceMonitor:
-    https: true
-    insecureSkipVerify: true
-    cAdvisor: true
-    cAdvisorRelabelings:
-      - action: replace
-        sourceLabels: [__metrics_path__]
-        targetLabel: metrics_path
