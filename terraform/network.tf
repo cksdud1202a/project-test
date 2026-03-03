@@ -37,6 +37,7 @@ resource "aws_route_table_association" "public_2b_assoc" {
 resource "aws_subnet" "private" {
   vpc_id     = aws_vpc.main.id
   cidr_block = "192.168.2.0/24"
+  availability_zone       = "ap-northeast-2a"   # ✅ 추가
   tags       = { Name = "${var.project_name}-private-subnet" }
 }
 
