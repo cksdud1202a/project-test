@@ -1,7 +1,6 @@
 prometheus:
   prometheusSpec:
     retention: 10d
-    # 스토리지 용량 부여하고 Prometheus Pod 생성 오류
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -15,7 +14,7 @@ grafana:
   enabled: true
   adminUser: "admin"
   adminPassword: "admin"
-  
+
   service:
     type: NodePort
     nodePort: 32000
@@ -29,9 +28,9 @@ grafana:
     dashboardproviders.yaml:
       apiVersion: 1
       providers:
-        - name: 'default'
+        - name: "default"
           orgId: 1
-          folder: 'K3s Cluster'
+          folder: "K3s Cluster"
           type: file
           disableDeletion: false
           editable: true
@@ -46,3 +45,14 @@ grafana:
         datasource:
           - name: DS_PROMETHEUS
             value: Prometheus
+
+# ✅ grafana 밖 (최상위 레벨)
+prometheus-node-exporter:
+  hostRootFsMount:
+    enabled: true
+
+# ✅ 최상위 레벨
+kubelet:
+  serviceMonitor:
+    https: true
+    insecureSkipVerify: true
