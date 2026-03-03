@@ -1,3 +1,4 @@
+# Prometheus 기본 설정
 prometheus:
   prometheusSpec:
     retention: 10d
@@ -8,13 +9,15 @@ prometheus:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 10Gi
+              storage: 10Gi  # 최소 용량 지정
 
+# Grafana 설정
 grafana:
   enabled: true
   adminUser: "admin"
   adminPassword: "admin"
 
+  # NodePort 방식
   service:
     type: NodePort
     nodePort: 32000
@@ -29,13 +32,14 @@ grafana:
     datasources.yaml:
       apiVersion: 1
       datasources:
-        - name: Prometheus          # DataSource 이름
+        - name: Prometheus          # 데이터 소스 이름
           type: prometheus
           access: proxy
-          url: http://prometheus.monitoring:9090  # ✅ 여기가 핵심
+          url: http://prometheus.monitoring:9090  # 실제 서비스 주소
           isDefault: true
           editable: true
 
+  # Dashboard 제공
   dashboardProviders:
     dashboardproviders.yaml:
       apiVersion: 1
@@ -55,13 +59,15 @@ grafana:
         gnetId: 19972
         revision: 1
         datasource:
-          - name: Prometheus      # Provisioned datasource 이름과 동일하게
+          - name: Prometheus  # 데이터 소스 이름과 동일하게 설정
             value: Prometheus
 
+# node-exporter 설정
 prometheus-node-exporter:
   hostRootFsMount:
     enabled: true
 
+# kubelet cAdvisor 설정
 kubelet:
   serviceMonitor:
     https: true
