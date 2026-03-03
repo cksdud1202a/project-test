@@ -35,7 +35,7 @@
     binary_path: /usr/local/bin/helm
     values: "{{ lookup('file', role_path + '/files/custom-values.yaml') | from_yaml | combine(dynamic_values, recursive=True) }}"
     wait: true
-    timeout: 900  # ⬅️ 기본 300초보다 충분히 늘려서 설치 지연 문제 방지
+    timeout: 900s  # ⬅️ 단위 붙임, Helm 요구 사항
   become: true
   vars:
     dynamic_values:
