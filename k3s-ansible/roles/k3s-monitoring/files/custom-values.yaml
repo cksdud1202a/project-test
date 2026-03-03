@@ -24,6 +24,18 @@ grafana:
     size: 10Gi
     storageClassName: "local-path"
 
+  # ✅ Provisioned DataSource 추가
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus          # DataSource 이름
+          type: prometheus
+          access: proxy
+          url: http://prometheus.monitoring:9090  # ✅ 여기가 핵심
+          isDefault: true
+          editable: true
+
   dashboardProviders:
     dashboardproviders.yaml:
       apiVersion: 1
@@ -43,21 +55,19 @@ grafana:
         gnetId: 19972
         revision: 1
         datasource:
-          - name: DS_PROMETHEUS
+          - name: Prometheus      # Provisioned datasource 이름과 동일하게
             value: Prometheus
 
-# ✅ grafana 밖 (최상위 레벨)
 prometheus-node-exporter:
   hostRootFsMount:
     enabled: true
 
-# ✅ 최상위 레벨
 kubelet:
   serviceMonitor:
     https: true
     insecureSkipVerify: true
-    cAdvisor: true                    # ✅ 추가: cgroup v2 환경에서 cadvisor 메트릭 수집
-    cAdvisorRelabelings:              # ✅ 추가: cadvisor 메트릭 경로 레이블 설정
+    cAdvisor: true
+    cAdvisorRelabelings:
       - action: replace
         sourceLabels: [__metrics_path__]
         targetLabel: metrics_path
