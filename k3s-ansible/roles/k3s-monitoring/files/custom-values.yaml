@@ -56,3 +56,8 @@ kubelet:
   serviceMonitor:
     https: true
     insecureSkipVerify: true
+    cAdvisor: true                    # ✅ 추가: cgroup v2 환경에서 cadvisor 메트릭 수집
+    cAdvisorRelabelings:              # ✅ 추가: cadvisor 메트릭 경로 레이블 설정
+      - action: replace
+        sourceLabels: [__metrics_path__]
+        targetLabel: metrics_path
