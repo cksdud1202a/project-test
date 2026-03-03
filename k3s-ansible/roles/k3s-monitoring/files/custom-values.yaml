@@ -1,4 +1,6 @@
+# ==============================
 # Prometheus 기본 설정
+# ==============================
 prometheus:
   prometheusSpec:
     retention: 10d
@@ -9,15 +11,16 @@ prometheus:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 10Gi  # 최소 용량 지정
+              storage: 10Gi
 
+# ==============================
 # Grafana 설정
+# ==============================
 grafana:
   enabled: true
   adminUser: "admin"
   adminPassword: "admin"
 
-  # NodePort 방식
   service:
     type: NodePort
     nodePort: 32000
@@ -27,24 +30,23 @@ grafana:
     size: 10Gi
     storageClassName: "local-path"
 
-  # ✅ Provisioned DataSource 추가
+  # ✅ Grafana datasource 자동 생성 (N/A 해결 핵심)
   datasources:
     datasources.yaml:
       apiVersion: 1
       datasources:
-        - name: Prometheus          # 데이터 소스 이름
+        - name: Prometheus
           type: prometheus
           access: proxy
-          url: http://prometheus.monitoring:9090  # 실제 서비스 주소
+          url: http://prometheus-operated.monitoring.svc.cluster.local:9090
           isDefault: true
           editable: true
 
-  # Dashboard 제공
   dashboardProviders:
     dashboardproviders.yaml:
       apiVersion: 1
       providers:
-        - name: "default"
+        - name: default
           orgId: 1
           folder: "K3s Cluster"
           type: file
@@ -59,15 +61,19 @@ grafana:
         gnetId: 19972
         revision: 1
         datasource:
-          - name: Prometheus  # 데이터 소스 이름과 동일하게 설정
+          - name: Prometheus
             value: Prometheus
 
-# node-exporter 설정
+# ==============================
+# node-exporter
+# ==============================
 prometheus-node-exporter:
   hostRootFsMount:
     enabled: true
 
-# kubelet cAdvisor 설정
+# ==============================
+# kubelet (cgroup v2 대응)
+# ==============================
 kubelet:
   serviceMonitor:
     https: true
