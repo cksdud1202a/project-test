@@ -17,10 +17,10 @@ resource "aws_subnet" "public" {
   tags                    = { Name = "${var.project_name}-public-subnet" }
 }
 
-# ===============================
+# ================================
 # [추가] Agent AZ(2b)용 Public Subnet
 # NLB가 Agent와 같은 AZ에 ENI를 가지기 위해 필요
-# ===============================
+# ================================
 resource "aws_subnet" "public_2b" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "192.168.3.0/24"
