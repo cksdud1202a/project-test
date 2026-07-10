@@ -1,21 +1,48 @@
-# 1. Prometheus 관련 설정 (통합 차트이므로 prometheus: 아래에 넣어야 함)
 prometheus:
   prometheusSpec:
     retention: 10d
+    # 스토리지 용량 부여하고 Prometheus Pod 생성 오류
     storageSpec:
-      disableMountSubPath: true
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
 
-# 2. Grafana 관련 설정 (grafana: 아래에 묶어줘야 인식됨)
 grafana:
   enabled: true
   adminUser: "admin"
   adminPassword: "admin"
   
   service:
-    type: NodePort # K3s 환경에서 외부 접속을 위해 가장 확실한 방법
+    type: NodePort
     nodePort: 32000
 
   persistence:
     enabled: true
     size: 10Gi
     storageClassName: "local-path"
+
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'default'
+          orgId: 1
+          folder: 'K3s Cluster'
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/default
+
+  dashboards:
+    default:
+      k3s-cluster-19972:
+        gnetId: 19972
+        revision: 1
+        datasource:
+          - name: DS_PROMETHEUS
+            value: Prometheus

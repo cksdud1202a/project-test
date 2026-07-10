@@ -12,13 +12,32 @@ resource "aws_internet_gateway" "igw" {
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "192.168.1.0/24"
+  availability_zone       = "ap-northeast-2a"   # ✅ 추가
   map_public_ip_on_launch = true
   tags                    = { Name = "${var.project_name}-public-subnet" }
+}
+
+# ================================
+# [추가] Agent AZ(2b)용 Public Subnet
+# NLB가 Agent와 같은 AZ에 ENI를 가지기 위해 필요
+# ================================
+resource "aws_subnet" "public_2b" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "192.168.3.0/24"
+  availability_zone       = "ap-northeast-2b"
+  map_public_ip_on_launch = true
+  tags = { Name = "${var.project_name}-public-subnet-2b" }
+}
+
+resource "aws_route_table_association" "public_2b_assoc" {
+  subnet_id      = aws_subnet.public_2b.id
+  route_table_id = aws_route_table.public_rt.id
 }
 
 resource "aws_subnet" "private" {
   vpc_id     = aws_vpc.main.id
   cidr_block = "192.168.2.0/24"
+  availability_zone       = "ap-northeast-2a"   # ✅ 추가
   tags       = { Name = "${var.project_name}-private-subnet" }
 }
 

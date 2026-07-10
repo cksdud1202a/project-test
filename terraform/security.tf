@@ -99,3 +99,14 @@ resource "aws_security_group_rule" "allow_server_to_agent" {
   security_group_id        = aws_security_group.agent_sg.id
   source_security_group_id = aws_security_group.server_sg.id
 }
+
+# Agent끼리 상호 통신 허용
+# 상호 통신이 안돼서 agent1에 설치된 그라파나가 agent2의 CoreDNS를 못찾는 문제 해결
+resource "aws_security_group_rule" "allow_agent_to_agent" {
+  type                     = "ingress"
+  from_port                = 0
+  to_port                  = 65535
+  protocol                 = "-1"
+  security_group_id        = aws_security_group.agent_sg.id
+  source_security_group_id = aws_security_group.agent_sg.id
+}
